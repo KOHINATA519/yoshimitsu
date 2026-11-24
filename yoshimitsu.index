@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>スーパー吉光 会社概要</title>
+
+<style>
+body{
+    max-width:900px;
+    margin:auto;
+    padding:20px;
+    font-size:22px;
+    line-height:1.8;
+    font-family:sans-serif;
+}
+</style>
+
+</head>
+
+<body>
+
+<h1>スーパー吉光</h1>
+
+<p>
+世界の皆様の豊かな暮らしを支えるスーパーマーケットです。
+</p>
+
+<hr>
+
+<h2>会社概要</h2>
+
+<p>
+会社名：スーパー吉光株式会社
+</p>
+
+<p>
+設立：2026年
+</p>
+
+<p>
+所在地：埼玉県入間市野田
+</p>
+
+<p>
+事業内容：食品・日用品の販売
+</p>
+
+<p>
+社長：吉田 光秀
+</p>
+
+<hr>
+
+<h2>経営理念</h2>
+
+<p>
+誰もが安心して利用できる店舗づくりを目指します。
+</p>
+
+<p>
+高齢者や視覚障害者を含むすべてのお客様に、
+わかりやすく利用しやすいサービスを提供します。
+</p>
+
+<hr>
+
+<h2>当店の特徴</h2>
+
+<ul>
+<li>毎日の特売情報を掲載</li>
+<li>新商品情報を提供</li>
+<li>アクセシビリティを重視した情報発信</li>
+<li>地域密着型サービス</li>
+</ul>
+
+<hr>
+
+<h2>店舗一覧</h2>
+<ul>
+<li>総本店(埼玉県入間市野田)</li>
+<li>Cognitio店(埼玉県坂戸市)</li>
+<li>浦和店(埼玉県さいたま市)</li>
+<li>岐阜店(岐阜県岐阜市)</li>
+<li>群馬店(群馬県前橋市)</li>
+<li>福島店(福島県福島市)</li>
+</ul>
+<hr>
+
+<p>
+<a href="index.html">トップページへ戻る</a>
+</p>
+
+</body>
+</html>
