@@ -1,71 +1,149 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>スーパー吉光</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>スーパー吉光</title>
 
-<style>
-body{
-    max-width:900px;
-    margin:auto;
-    padding:20px;
-    font-size:22px;
-    line-height:1.8;
-    font-family:Arial,sans-serif;
-}
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-a{
-    font-size:24px;
-}
+  <style>
+    body {
+      max-width: 900px;
+      margin: auto;
+      padding: 20px;
+      font-size: 22px;
+      line-height: 1.8;
+      font-family: Arial, sans-serif;
+    }
 
-button{
-    font-size:20px;
-    margin:5px;
-}
-</style>
+    a {
+      font-size: 24px;
+    }
+
+    button {
+      font-size: 20px;
+      margin: 5px;
+    }
+
+    .announcement {
+      border-bottom: 1px solid #ccc;
+      padding: 10px 0;
+    }
+
+    .announcement-date {
+      color: #666;
+      font-size: 16px;
+    }
+
+    .announcement-link {
+      display: inline-block;
+      margin-top: 4px;
+    }
+  </style>
 </head>
 
 <body>
 
-<h1>スーパー吉光</h1>
+  <h1>スーパー吉光</h1>
 
-<p>
-Dux利用者向けスーパー情報サイト
-</p>
+  <p>Dux利用者向けスーパー情報サイト</p>
 
-<button onclick="document.body.style.fontSize='30px'">
-文字を大きくする
-</button>
+  <button onclick="document.body.style.fontSize='30px'">
+    文字を大きくする
+  </button>
 
-<button onclick="document.body.style.fontSize='22px'">
-元に戻す
-</button>
+  <button onclick="document.body.style.fontSize='22px'">
+    元に戻す
+  </button>
 
-<h2>カテゴリー</h2>
+  <h2>カテゴリー</h2>
 
-<ul>
-<li><a href="meat.html">肉コーナー特売</a></li>
-<li><a href="fish.html">魚コーナー特売</a></li>
-<li><a href="vegetable.html">野菜コーナー特売</a></li>
-<li><a href="newitem.html">新商品情報</a></li>
-</ul>
+  <ul>
+    <li><a href="meat.html">肉コーナー特売</a></li>
+    <li><a href="fish.html">魚コーナー特売</a></li>
+    <li><a href="vegetable.html">野菜コーナー特売</a></li>
+    <li><a href="newitem.html">新商品情報</a></li>
+  </ul>
 
-<h2>お知らせ</h2>
+  <h2>お知らせ</h2>
+  <div id="announcements">お知らせを読み込んでいます...</div>
 
-<p>
-毎日の特売情報を更新しています。
-</p>
+  <hr>
 
-<hr>
+  <p>
+    <a href="yoshimitsu.html">スーパー吉光株式会社</a>
+  </p>
 
-<p>
-<a href="yoshimitsu.html">スーパー吉光株式会社</a>
-</p>
+  <p>
+    <a href="cognitio.html">Cognitio株式会社</a>
+  </p>
 
-<p>
-<a href="cognitio.html">Cognitio株式会社</a>
-</p>
+  <script>
+    const supabaseUrl = "https://llxysqzozhnikuznsuwy.supabase.co";
+    const supabaseKey = "sb_publishable_uv_8zUNxYc1tebjvnukzdg_nNF6kAip";
+    const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+    async function loadAnnouncements() {
+      const area = document.getElementById("announcements");
+
+      const { data, error } = await supabaseClient
+        .from("announcements")
+        .select("message, link_text, link_url, created_at")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        area.textContent = "お知らせを読み込めませんでした。";
+        console.error("お知らせ読込エラー:", error.message);
+        return;
+      }
+
+      area.replaceChildren();
+
+      if (!data || data.length === 0) {
+        area.textContent = "現在お知らせはありません。";
+        return;
+      }
+
+      for (const item of data) {
+        const article = document.createElement("div");
+        article.className = "announcement";
+
+        const message = document.createElement("p");
+        message.textContent = item.message;
+        article.appendChild(message);
+
+        if (item.created_at) {
+          const date = document.createElement("div");
+          date.className = "announcement-date";
+          date.textContent = new Date(item.created_at).toLocaleDateString("ja-JP");
+          article.appendChild(date);
+        }
+
+        if (item.link_url) {
+          try {
+            const url = new URL(item.link_url);
+
+            if (url.protocol === "https:" || url.protocol === "http:") {
+              const link = document.createElement("a");
+              link.className = "announcement-link";
+              link.href = url.href;
+              link.textContent = item.link_text || "詳しくはこちら";
+              link.target = "_blank";
+              link.rel = "noopener noreferrer";
+              article.appendChild(link);
+            }
+          } catch {
+            // URLが正しくない場合はリンクを表示しません
+          }
+        }
+
+        area.appendChild(article);
+      }
+    }
+
+    loadAnnouncements();
+  </script>
 
 </body>
 </html>
