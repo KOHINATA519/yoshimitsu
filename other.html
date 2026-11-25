@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>その他特売｜スーパー吉光</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    body {
+      max-width: 900px;
+      margin: auto;
+      padding: 20px;
+      font-size: 22px;
+      line-height: 1.8;
+      font-family: Arial, sans-serif;
+    }
+
+    .card {
+      border: 1px solid #ccc;
+      padding: 12px;
+      margin: 12px 0;
+    }
+
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>その他特売</h1>
+  <p><a href="index.html">トップページへ戻る</a></p>
+
+  <div id="products">商品を読み込んでいます...</div>
+
+  <script>
+    const supabaseUrl = "https://llxysqzozhnikuznsuwy.supabase.co";
+    const supabaseKey = "sb_publishable_uv_8zUNxYc1tebjvnukzdg_nNF6kAip";
+    const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+    async function loadProducts() {
+      const area = document.getElementById("products");
+
+      const { data, error } = await supabaseClient
+        .from("products")
+        .select("product_name, price, corner")
+        .eq("category", "その他特売")
+        .order("id", { ascending: false });
+
+      if (error) {
+        area.textContent = "商品を読み込めませんでした。";
+        console.error(error.message);
+        return;
+      }
+
+      area.replaceChildren();
+
+      if (!data || data.length === 0) {
+        area.textContent = "現在、その他特売の商品はありません。";
+        return;
+      }
+
+      for (const item of data) {
+        const card = document.createElement("div");
+        card.className = "card";
+
+        const name = document.createElement("strong");
+        name.textContent = item.product_name || "";
+        card.appendChild(name);
+
+        const price = document.createElement("p");
+        price.textContent = "価格：" + (item.price || "");
+        card.appendChild(price);
+
+        const corner = document.createElement("p");
+        corner.textContent = "陳列コーナー：" + (item.corner || "");
+        card.appendChild(corner);
+
+        area.appendChild(card);
+      }
+    }
+
+    loadProducts();
+  </script>
+</body>
+</html>
