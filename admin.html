@@ -1,216 +1,321 @@
+もちろんです。以下が、編集・削除機能を追加したHTMLです。そのままGitHubのファイルに貼り付けてください。
+
+```html
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>商品登録管理画面</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>商品登録管理画面</title>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<style>
-body{
-max-width:800px;
-margin:auto;
-padding:20px;
-font-size:22px;
-line-height:1.8;
-font-family:sans-serif;
-}
+  <style>
+    body {
+      max-width: 800px;
+      margin: auto;
+      padding: 20px;
+      font-size: 22px;
+      line-height: 1.8;
+      font-family: sans-serif;
+    }
 
-input,select,button{
-font-size:22px;
-padding:8px;
-width:100%;
-margin-bottom:10px;
-}
+    input, select, button {
+      box-sizing: border-box;
+      font-size: 22px;
+      padding: 8px;
+      width: 100%;
+      margin-bottom: 10px;
+    }
 
-button{
-cursor:pointer;
-}
+    button {
+      cursor: pointer;
+    }
 
-.success{
-color:green;
-font-weight:bold;
-}
+    button:disabled {
+      cursor: wait;
+      opacity: 0.6;
+    }
 
-.error{
-color:red;
-font-weight:bold;
-}
+    .success {
+      color: green;
+      font-weight: bold;
+    }
 
-.card{
-border:1px solid #ccc;
-padding:10px;
-margin-top:10px;
-}
-</style>
+    .error {
+      color: red;
+      font-weight: bold;
+    }
 
+    .card {
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin-top: 10px;
+      overflow-wrap: anywhere;
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .card-actions button {
+      margin: 0;
+    }
+
+    .delete-btn {
+      background: #fff0f0;
+      color: #a00;
+    }
+
+    .cancel-btn {
+      background: #eee;
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 12px;
+        font-size: 19px;
+      }
+
+      input, select, button {
+        font-size: 19px;
+      }
+    }
+  </style>
 </head>
 
 <body>
+  <h1>スーパー吉光 商品登録</h1>
 
-<h1>スーパー吉光 商品登録</h1>
+  <p>カテゴリー</p>
+  <select id="category">
+    <option>肉</option>
+    <option>魚</option>
+    <option>野菜</option>
+    <option>新商品</option>
+  </select>
 
-<p>カテゴリー</p>
+  <p>商品名</p>
+  <input id="product_name">
 
-<select id="category">
-<option>肉</option>
-<option>魚</option>
-<option>野菜</option>
-<option>新商品</option>
-</select>
+  <p>価格</p>
+  <input id="price" inputmode="decimal">
 
-<p>商品名</p>
-<input id="product_name">
+  <p>陳列コーナー</p>
+  <input id="corner">
 
-<p>価格</p>
-<input id="price">
+  <button id="saveBtn" type="button" onclick="saveData()">登録</button>
+  <button
+    id="cancelEditBtn"
+    class="cancel-btn"
+    type="button"
+    onclick="cancelEdit()"
+    hidden
+  >
+    編集をキャンセル
+  </button>
 
-<p>陳列コーナー</p>
-<input id="corner">
+  <hr>
 
-<button id="saveBtn" onclick="saveData()">
-登録
-</button>
+  <h2>状態</h2>
+  <p id="status" aria-live="polite">入力待ち</p>
 
-<hr>
+  <hr>
 
-<h2>状態</h2>
+  <h2>最近登録した商品</h2>
+  <div id="history" aria-live="polite">読込中...</div>
 
-<p id="status">
-入力待ち
-</p>
+  <script>
+    const supabaseUrl = "https://llxysqzozhnikuznsuwy.supabase.co";
+    const supabaseKey = "sb_publishable_uv_8zUNxYc1tebjvnukzdg_nNF6kAip";
 
-<hr>
+    const client = supabase.createClient(supabaseUrl, supabaseKey);
 
-<h2>最近登録した商品</h2>
+    // 編集中の商品ID。nullなら新規登録
+    let editingId = null;
 
-<div id="history">
-読込中...
-</div>
+    // 商品データをHTMLに表示するときのエスケープ
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      })[char]);
+    }
 
-<script>
+    // 商品一覧を読み込む
+    async function loadData() {
+      const history = document.getElementById("history");
+      history.textContent = "読込中...";
 
-const supabaseUrl =
-"https://llxysqzozhnikuznsuwy.supabase.co";
+      const { data, error } = await client
+        .from("products")
+        .select("*")
+        .order("id", { ascending: false })
+        .limit(20);
 
-const supabaseKey =
-"sb_publishable_uv_8zUNxYc1tebjvnukzdg_nNF6kAip";
+      if (error) {
+        history.innerHTML =
+          `<p class="error">読込失敗：${escapeHtml(error.message)}</p>`;
+        return;
+      }
 
-const client =
-supabase.createClient(
-supabaseUrl,
-supabaseKey
-);
+      if (!data || data.length === 0) {
+        history.textContent = "登録商品なし";
+        return;
+      }
 
-async function loadData(){
+      history.innerHTML = data.map(item => `
+        <div class="card">
+          <b>${escapeHtml(item.category)}</b><br>
+          ${escapeHtml(item.product_name)}<br>
+          ${escapeHtml(item.price)}<br>
+          陳列コーナー：${escapeHtml(item.corner)}
 
-const history =
-document.getElementById("history");
+          <div class="card-actions">
+            <button
+              type="button"
+              onclick="startEdit(${JSON.stringify(item.id)})"
+            >
+              編集
+            </button>
 
-history.innerHTML = "読込中...";
+            <button
+              class="delete-btn"
+              type="button"
+              onclick="deleteData(${JSON.stringify(item.id)})"
+            >
+              削除
+            </button>
+          </div>
+        </div>
+      `).join("");
+    }
 
-const { data,error } =
-await client
-.from("products")
-.select("*")
-.order("id",{ascending:false})
-.limit(20);
+    // 新規登録または編集内容の保存
+    async function saveData() {
+      const status = document.getElementById("status");
+      const btn = document.getElementById("saveBtn");
 
-if(error){
+      const product = {
+        category: document.getElementById("category").value,
+        product_name: document.getElementById("product_name").value.trim(),
+        price: document.getElementById("price").value.trim(),
+        corner: document.getElementById("corner").value.trim()
+      };
 
-history.innerHTML =
-"<p class='error'>読込失敗</p>";
+      if (!product.product_name) {
+        status.innerHTML =
+          "<span class='error'>商品名を入力してください。</span>";
+        return;
+      }
 
-return;
-}
+      btn.disabled = true;
+      status.textContent = editingId === null ? "登録中..." : "更新中...";
 
-if(data.length===0){
+      const result = editingId === null
+        ? await client.from("products").insert([product])
+        : await client.from("products").update(product).eq("id", editingId);
 
-history.innerHTML =
-"登録商品なし";
+      if (result.error) {
+        const action = editingId === null ? "登録" : "更新";
+        status.innerHTML =
+          `<span class="error">❌ ${action}失敗：${escapeHtml(result.error.message)}</span>`;
+        btn.disabled = false;
+        return;
+      }
 
-return;
-}
+      const wasEditing = editingId !== null;
+      status.innerHTML =
+        `<span class="success">✅ ${wasEditing ? "更新" : "登録"}完了</span>`;
 
-let html="";
+      resetForm();
+      await loadData();
+      btn.disabled = false;
+    }
 
-data.forEach(item=>{
+    // 編集ボタンを押した商品の内容を入力欄に表示
+    async function startEdit(id) {
+      const { data, error } = await client
+        .from("products")
+        .select("*")
+        .eq("id", id)
+        .single();
 
-html += `
-<div class="card">
-<b>${item.category}</b><br>
-${item.product_name}<br>
-${item.price}<br>
-陳列コーナー：${item.corner}
-</div>
-`;
+      if (error) {
+        document.getElementById("status").innerHTML =
+          `<span class="error">編集する商品を読み込めませんでした：${escapeHtml(error.message)}</span>`;
+        return;
+      }
 
-});
+      editingId = data.id;
 
-history.innerHTML = html;
+      document.getElementById("category").value = data.category ?? "肉";
+      document.getElementById("product_name").value = data.product_name ?? "";
+      document.getElementById("price").value = data.price ?? "";
+      document.getElementById("corner").value = data.corner ?? "";
 
-}
+      document.getElementById("saveBtn").textContent = "変更を保存";
+      document.getElementById("cancelEditBtn").hidden = false;
+      document.getElementById("status").textContent =
+        "編集中です。内容を変更して保存してください。";
 
-async function saveData(){
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
 
-const status =
-document.getElementById("status");
+    // 商品を削除
+    async function deleteData(id) {
+      if (!window.confirm("この商品を削除します。よろしいですか？")) {
+        return;
+      }
 
-const btn =
-document.getElementById("saveBtn");
+      const status = document.getElementById("status");
+      status.textContent = "削除中...";
 
-btn.disabled = true;
+      const { error } = await client
+        .from("products")
+        .delete()
+        .eq("id", id);
 
-status.innerHTML =
-"登録中...";
+      if (error) {
+        status.innerHTML =
+          `<span class="error">❌ 削除失敗：${escapeHtml(error.message)}</span>`;
+        return;
+      }
 
-const { error } =
-await client
-.from("products")
-.insert([
-{
-category:
-document.getElementById("category").value,
+      if (editingId !== null && String(editingId) === String(id)) {
+        resetForm();
+      }
 
-product_name:
-document.getElementById("product_name").value,
+      status.innerHTML = "<span class='success'>✅ 削除完了</span>";
+      await loadData();
+    }
 
-price:
-document.getElementById("price").value,
+    // 編集をキャンセル
+    function cancelEdit() {
+      resetForm();
+      document.getElementById("status").textContent =
+        "編集をキャンセルしました。";
+    }
 
-corner:
-document.getElementById("corner").value
-}
-]);
+    // 入力欄を初期状態に戻す
+    function resetForm() {
+      editingId = null;
 
-if(error){
+      document.getElementById("product_name").value = "";
+      document.getElementById("price").value = "";
+      document.getElementById("corner").value = "";
 
-status.innerHTML =
-"<span class='error'>❌ 登録失敗<br>"+error.message+"</span>";
+      document.getElementById("saveBtn").textContent = "登録";
+      document.getElementById("cancelEditBtn").hidden = true;
+    }
 
-btn.disabled = false;
-
-return;
-
-}
-
-status.innerHTML =
-"<span class='success'>✅ 登録完了</span>";
-
-document.getElementById("product_name").value="";
-document.getElementById("price").value="";
-document.getElementById("corner").value="";
-
-loadData();
-
-btn.disabled = false;
-
-}
-
-loadData();
-
-</script>
-
+    loadData();
+  </script>
 </body>
 </html>
+```
