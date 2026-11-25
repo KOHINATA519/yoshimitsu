@@ -3,14 +3,53 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>商品登録</title>
+<title>商品登録管理画面</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body{
+max-width:800px;
+margin:auto;
+padding:20px;
+font-size:22px;
+line-height:1.8;
+font-family:sans-serif;
+}
+
+input,select,button{
+font-size:22px;
+padding:8px;
+width:100%;
+margin-bottom:10px;
+}
+
+button{
+cursor:pointer;
+}
+
+.success{
+color:green;
+font-weight:bold;
+}
+
+.error{
+color:red;
+font-weight:bold;
+}
+
+.card{
+border:1px solid #ccc;
+padding:10px;
+margin-top:10px;
+}
+</style>
+
 </head>
 
 <body>
 
-<h1>商品登録</h1>
+<h1>スーパー吉光 商品登録</h1>
 
 <p>カテゴリー</p>
 
@@ -30,8 +69,6 @@
 <p>陳列コーナー</p>
 <input id="corner">
 
-<br><br>
-
 <button id="saveBtn" onclick="saveData()">
 登録
 </button>
@@ -43,22 +80,90 @@
 <p id="status">
 入力待ち
 </p>
+
+<hr>
+
+<h2>最近登録した商品</h2>
+
+<div id="history">
+読込中...
+</div>
+
 <script>
 
 const supabaseUrl =
 "https://llxysqzozhnikuznsuwy.supabase.co";
 
-/*
-ここに Publishable Key を貼る
-*/
-const supabaseKey = "sb_publishable_uv_8zUNxYc1tebjvnukzdg_nNF6kAip";
+const supabaseKey =
+"sb_publishable_uv_8zUNxYc1tebjvnukzdg_nNF6kAip";
 
-const client = supabase.createClient(
+const client =
+supabase.createClient(
 supabaseUrl,
 supabaseKey
 );
 
+async function loadData(){
+
+const history =
+document.getElementById("history");
+
+history.innerHTML = "読込中...";
+
+const { data,error } =
+await client
+.from("products")
+.select("*")
+.order("id",{ascending:false})
+.limit(20);
+
+if(error){
+
+history.innerHTML =
+"<p class='error'>読込失敗</p>";
+
+return;
+}
+
+if(data.length===0){
+
+history.innerHTML =
+"登録商品なし";
+
+return;
+}
+
+let html="";
+
+data.forEach(item=>{
+
+html += `
+<div class="card">
+<b>${item.category}</b><br>
+${item.product_name}<br>
+${item.price}<br>
+陳列コーナー：${item.corner}
+</div>
+`;
+
+});
+
+history.innerHTML = html;
+
+}
+
 async function saveData(){
+
+const status =
+document.getElementById("status");
+
+const btn =
+document.getElementById("saveBtn");
+
+btn.disabled = true;
+
+status.innerHTML =
+"登録中...";
 
 const { error } =
 await client
@@ -81,17 +186,29 @@ document.getElementById("corner").value
 
 if(error){
 
-document.getElementById("result").innerText =
-"登録失敗";
+status.innerHTML =
+"<span class='error'>❌ 登録失敗<br>"+error.message+"</span>";
 
-}else{
+btn.disabled = false;
 
-document.getElementById("result").innerText =
-"登録完了";
+return;
+
+}
+
+status.innerHTML =
+"<span class='success'>✅ 登録完了</span>";
+
+document.getElementById("product_name").value="";
+document.getElementById("price").value="";
+document.getElementById("corner").value="";
+
+loadData();
+
+btn.disabled = false;
 
 }
 
-}
+loadData();
 
 </script>
 
