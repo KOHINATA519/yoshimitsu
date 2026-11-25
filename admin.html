@@ -13,6 +13,7 @@
 <h1>商品登録</h1>
 
 <p>カテゴリー</p>
+
 <select id="category">
 <option>肉</option>
 <option>魚</option>
@@ -31,12 +32,17 @@
 
 <br><br>
 
-<button onclick="saveData()">
+<button id="saveBtn" onclick="saveData()">
 登録
 </button>
 
-<p id="result"></p>
+<hr>
 
+<h2>状態</h2>
+
+<p id="status">
+入力待ち
+</p>
 <script>
 
 const supabaseUrl =
