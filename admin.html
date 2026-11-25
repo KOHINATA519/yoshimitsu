@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>商品登録</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 
 <body>
@@ -11,7 +13,6 @@
 <h1>商品登録</h1>
 
 <p>カテゴリー</p>
-
 <select id="category">
 <option>肉</option>
 <option>魚</option>
@@ -30,11 +31,63 @@
 
 <br><br>
 
-<button id="saveBtn">
+<button onclick="saveData()">
 登録
 </button>
 
 <p id="result"></p>
+
+<script>
+
+const supabaseUrl =
+"https://llxysqzozhnikuznsuwy.supabase.co";
+
+/*
+ここに Publishable Key を貼る
+*/
+const supabaseKey = sb_publishable_uv_8zUNxYc1tebjvnukzdg_nNF6kAip;
+
+const client = supabase.createClient(
+supabaseUrl,
+supabaseKey
+);
+
+async function saveData(){
+
+const { error } =
+await client
+.from("products")
+.insert([
+{
+category:
+document.getElementById("category").value,
+
+product_name:
+document.getElementById("product_name").value,
+
+price:
+document.getElementById("price").value,
+
+corner:
+document.getElementById("corner").value
+}
+]);
+
+if(error){
+
+document.getElementById("result").innerText =
+"登録失敗";
+
+}else{
+
+document.getElementById("result").innerText =
+"登録完了";
+
+}
+
+}
+
+</script>
 
 </body>
 </html>
