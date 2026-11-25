@@ -313,6 +313,23 @@
     }
 
     loadData();
+    <h2>お知らせを追加</h2>
+
+<p>お知らせ文</p>
+<input id="noticeMessage" placeholder="例：毎日、特売情報を更新しています">
+
+<p>リンクに表示する文字（省略可）</p>
+<input id="noticeLinkText" placeholder="例：今週の特売を見る">
+
+<p>リンク先URL（省略可）</p>
+<input id="noticeLinkUrl" type="url" placeholder="https://example.com">
+
+<button type="button" onclick="addAnnouncement()">お知らせを登録</button>
+
+<div id="announcementStatus" aria-live="polite"></div>
+
+<h3>登録済みのお知らせ</h3>
+<div id="announcementAdminList"></div>
   </script>
 </body>
 </html>
