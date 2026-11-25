@@ -35,11 +35,6 @@
       color: #666;
       font-size: 16px;
     }
-
-    .announcement-link {
-      display: inline-block;
-      margin-top: 4px;
-    }
   </style>
 </head>
 
@@ -89,7 +84,7 @@
 
       const { data, error } = await supabaseClient
         .from("announcements")
-        .select("message, link_text, link_url, created_at")
+        .select("message, link_url, created_at")
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -104,62 +99,44 @@
         area.textContent = "現在お知らせはありません。";
         return;
       }
-for (const item of data) {
-  const article = document.createElement("div");
-  article.className = "announcement";
 
-  let validUrl = null;
+      for (const item of data) {
+        const article = document.createElement("div");
+        article.className = "announcement";
 
-  if (item.link_url) {
-    try {
-      const url = new URL(item.link_url);
+        let validUrl = null;
 
-      if (url.protocol === "https:" || url.protocol === "http:") {
-        validUrl = url.href;
-      }
-    } catch {
-      // URLが正しくない場合は、お知らせ文を通常のテキストで表示
-    }
-  }
-
-  if (validUrl) {
-    const messageLink = document.createElement("a");
-    messageLink.href = validUrl;
-    messageLink.textContent = item.message;
-    messageLink.target = "_blank";
-    messageLink.rel = "noopener noreferrer";
-    article.appendChild(messageLink);
-  } else {
-    const message = document.createElement("p");
-    message.textContent = item.message;
-    article.appendChild(message);
-  }
-
-  if (item.created_at) {
-    const date = document.createElement("div");
-    date.className = "announcement-date";
-    date.textContent = new Date(item.created_at).toLocaleDateString("ja-JP");
-    article.appendChild(date);
-  }
-
-  area.appendChild(article);
-}
         if (item.link_url) {
           try {
             const url = new URL(item.link_url);
 
             if (url.protocol === "https:" || url.protocol === "http:") {
-              const link = document.createElement("a");
-              link.className = "announcement-link";
-              link.href = url.href;
-              link.textContent = item.link_text || "詳しくはこちら";
-              link.target = "_blank";
-              link.rel = "noopener noreferrer";
-              article.appendChild(link);
+              validUrl = url.href;
             }
           } catch {
-            // URLが正しくない場合はリンクを表示しません
+            // URLが正しくない場合は、お知らせ文を通常のテキストで表示
           }
+        }
+
+        if (validUrl) {
+          const messageLink = document.createElement("a");
+          messageLink.href = validUrl;
+          messageLink.textContent = item.message;
+          messageLink.target = "_blank";
+          messageLink.rel = "noopener noreferrer";
+          article.appendChild(messageLink);
+        } else {
+          const message = document.createElement("p");
+          message.textContent = item.message;
+          article.appendChild(message);
+        }
+
+        if (item.created_at) {
+          const date = document.createElement("div");
+          date.className = "announcement-date";
+          date.textContent =
+            new Date(item.created_at).toLocaleDateString("ja-JP");
+          article.appendChild(date);
         }
 
         area.appendChild(article);
@@ -169,5 +146,7 @@ for (const item of data) {
     loadAnnouncements();
   </script>
 
+</body>
+</html>
 </body>
 </html>
