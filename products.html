@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>特売商品｜スーパー吉光</title>
+  <title>商品一覧｜スーパー吉光</title>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
@@ -16,7 +17,7 @@
       font-family: Arial, sans-serif;
     }
 
-    a { font-size: 24px; }
+    a { font-size: 1.1em; }
 
     button {
       font-size: 20px;
@@ -34,6 +35,7 @@
       border: 1px solid #ccc;
       padding: 12px;
       margin: 12px 0;
+      overflow-wrap: anywhere;
     }
 
     .error { color: #b00020; }
@@ -60,57 +62,81 @@
     const SUPABASE_URL = "https://llxysqzozhnikuznsuwy.supabase.co";
     const SUPABASE_PUBLISHABLE_KEY =
       "sb_publishable_uv_8zUNxYc1tebjvnukzdg_nNF6kAip";
+
     const supabaseClient = supabase.createClient(
       SUPABASE_URL,
       SUPABASE_PUBLISHABLE_KEY
     );
 
-    const allowedCategories = ["肉", "魚", "野菜", "その他特売", "新商品"];
     const category = new URLSearchParams(location.search).get("category");
+    const title = document.getElementById("pageTitle");
     const area = document.getElementById("products");
     const updatedArea = document.getElementById("lastUpdated");
 
-    if (!allowedCategories.includes(category)) {
-      document.getElementById("pageTitle").textContent = "カテゴリーが指定されていません";
+    if (!category) {
+      title.textContent = "カテゴリーが指定されていません";
       area.textContent = "トップページからカテゴリーを選んでください。";
     } else {
-      document.title = category + "｜スーパー吉光";
-      document.getElementById("pageTitle").textContent =
-        category + (category === "新商品" ? "情報" : "の特売品コーナー");
+      title.textContent =
+        category === "新商品"
+          ? "新商品情報"
+          : category + (category === "その他特売" ? "" : "の特売品コーナー");
 
+      document.title = title.textContent + "｜スーパー吉光";
       loadProducts(category);
     }
 
-    async function loadProducts(category) {
+    async function loadProducts(categoryName) {
+      // URLのカテゴリーが現在のカテゴリー一覧に存在するか確認
+      const { data: categoryData, error: categoryError } =
+        await supabaseClient
+          .from("categories")
+          .select("name")
+          .eq("name", categoryName)
+          .maybeSingle();
+
+      if (categoryError) {
+        title.textContent = "カテゴリーを確認できませんでした";
+        area.textContent = "カテゴリーを読み込めません。時間をおいて再度お試しください。";
+        console.error("カテゴリー確認エラー:", categoryError.message);
+        return;
+      }
+
+      if (!categoryData) {
+        title.textContent = "カテゴリーが見つかりません";
+        area.textContent = "このカテゴリーは削除されたか、登録されていません。";
+        return;
+      }
+
       const { data, error } = await supabaseClient
         .from("products")
         .select("product_name, price, corner, created_at, updated_at")
-        .eq("category", category)
+        .eq("category", categoryName)
         .order("updated_at", { ascending: false });
 
       if (error) {
         area.textContent = "商品を読み込めませんでした。";
-        updatedArea.textContent = "";
         console.error("商品読込エラー:", error.message);
         return;
       }
 
       if (!data || data.length === 0) {
         updatedArea.textContent = "最終更新日：まだ商品がありません";
-        area.textContent = "現在、このカテゴリーの商品はありません。";
+        area.textContent = "このカテゴリーの商品はまだありません。";
         return;
       }
 
-      const latest = data[0].updated_at || data[0].created_at;
+      const lastUpdate = data[0].updated_at || data[0].created_at;
 
-      if (latest) {
-        updatedArea.textContent = "最終更新日：" +
+      if (lastUpdate) {
+        updatedArea.textContent =
+          "最終更新日：" +
           new Intl.DateTimeFormat("ja-JP", {
             timeZone: "Asia/Tokyo",
             year: "numeric",
             month: "2-digit",
             day: "2-digit"
-          }).format(new Date(latest));
+          }).format(new Date(lastUpdate));
       }
 
       area.replaceChildren();
