@@ -9,21 +9,24 @@
 
   <style>
     body {
+      --base-font-size: 22px;
       max-width: 900px;
       margin: auto;
       padding: 20px;
-      font-size: 22px;
+      font-size: var(--base-font-size);
       line-height: 1.8;
       font-family: Arial, sans-serif;
     }
 
     a {
-      font-size: 24px;
+      font-size: 1.1em;
     }
 
     button {
-      font-size: 20px;
+      font-size: 0.95em;
       margin: 5px;
+      padding: 6px 10px;
+      cursor: pointer;
     }
 
     .announcement {
@@ -33,55 +36,68 @@
 
     .announcement-date {
       color: #666;
-      font-size: 16px;
+      font-size: 0.8em;
+    }
+
+    .error {
+      color: #b00020;
     }
   </style>
 </head>
 
 <body>
-
   <h1>スーパー吉光</h1>
 
   <p>Dux利用者向けスーパー情報サイト</p>
 
-  <button onclick="document.body.style.fontSize='30px'">
+  <button type="button" onclick="changeFontSize('30px')">
     文字を大きくする
   </button>
 
-  <button onclick="document.body.style.fontSize='22px'">
+  <button type="button" onclick="changeFontSize('22px')">
     元に戻す
   </button>
 
   <h2>カテゴリー</h2>
 
- <ul>
-  <li><a href="products.html?category=肉">肉コーナー特売</a></li>
-  <li><a href="products.html?category=魚">魚コーナー特売</a></li>
-  <li><a href="products.html?category=野菜">野菜コーナー特売</a></li>
-  <li><a href="products.html?category=その他特売">その他特売</a></li>
-  <li><a href="products.html?category=新商品">新商品情報</a></li>
-</ul>
+  <ul>
+    <li><a href="products.html?category=肉">肉コーナー特売</a></li>
+    <li><a href="products.html?category=魚">魚コーナー特売</a></li>
+    <li><a href="products.html?category=野菜">野菜コーナー特売</a></li>
+    <li><a href="products.html?category=その他特売">その他特売</a></li>
+    <li><a href="products.html?category=新商品">新商品情報</a></li>
+  </ul>
 
   <h2>お知らせ</h2>
-  <div id="announcements">お知らせを読み込んでいます...</div>
+  <div id="announcements" aria-live="polite">
+    お知らせを読み込んでいます...
+  </div>
 
   <hr>
 
   <p>
     <a href="yoshimitsu.html">スーパー吉光株式会社</a>
   </p>
- <p>
-    Suported by</a>
-  </p>
+
+  <p>Supported by</p>
 
   <p>
     <a href="cognitio.html">Cognitio株式会社</a>
   </p>
 
   <script>
-    const supabaseUrl = "https://llxysqzozhnikuznsuwy.supabase.co";
-    const supabaseKey = "sb_publishable_uv_8zUNxYc1tebjvnukzdg_nNF6kAip";
-    const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+    const SUPABASE_URL = "https://llxysqzozhnikuznsuwy.supabase.co";
+    const SUPABASE_PUBLISHABLE_KEY =
+      "sb_publishable_uv_8zUNxYc1tebjvnukzdg_nNF6kAip";
+
+    const supabaseClient = supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_PUBLISHABLE_KEY
+    );
+
+    function changeFontSize(size) {
+      document.body.style.setProperty("--base-font-size", size);
+    }
 
     async function loadAnnouncements() {
       const area = document.getElementById("announcements");
@@ -93,6 +109,7 @@
 
       if (error) {
         area.textContent = "お知らせを読み込めませんでした。";
+        area.className = "error";
         console.error("お知らせ読込エラー:", error.message);
         return;
       }
@@ -105,52 +122,51 @@
       }
 
       for (const item of data) {
-        const article = document.createElement("div");
-        article.className = "announcement";
+        const announcement = document.createElement("section");
+        announcement.className = "announcement";
 
-        let validUrl = null;
+        let safeUrl = null;
 
         if (item.link_url) {
           try {
             const url = new URL(item.link_url);
 
             if (url.protocol === "https:" || url.protocol === "http:") {
-              validUrl = url.href;
+              safeUrl = url.href;
             }
           } catch {
-            // URLが正しくない場合は、お知らせ文を通常のテキストで表示
+            // URLが正しくない場合は、お知らせ文を通常の文字で表示します
           }
         }
 
-        if (validUrl) {
+        if (safeUrl) {
           const messageLink = document.createElement("a");
-          messageLink.href = validUrl;
-          messageLink.textContent = item.message;
+          messageLink.href = safeUrl;
+          messageLink.textContent = item.message || "";
           messageLink.target = "_blank";
           messageLink.rel = "noopener noreferrer";
-          article.appendChild(messageLink);
+          announcement.appendChild(messageLink);
         } else {
           const message = document.createElement("p");
-          message.textContent = item.message;
-          article.appendChild(message);
+          message.textContent = item.message || "";
+          announcement.appendChild(message);
         }
 
         if (item.created_at) {
           const date = document.createElement("div");
           date.className = "announcement-date";
           date.textContent =
-            new Date(item.created_at).toLocaleDateString("ja-JP");
-          article.appendChild(date);
+            new Date(item.created_at).toLocaleDateString("ja-JP", {
+              timeZone: "Asia/Tokyo"
+            });
+          announcement.appendChild(date);
         }
 
-        area.appendChild(article);
+        area.appendChild(announcement);
       }
     }
 
     loadAnnouncements();
   </script>
-
-</body>
-</html>
 </body>
 </html>
