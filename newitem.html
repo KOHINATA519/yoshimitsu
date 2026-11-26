@@ -1,38 +1,128 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<title>新商品情報</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>新商品情報｜スーパー吉光</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    body {
+      max-width: 900px;
+      margin: auto;
+      padding: 20px;
+      font-size: 22px;
+      line-height: 1.8;
+      font-family: Arial, sans-serif;
+    }
+
+    a {
+      font-size: 24px;
+    }
+
+    button {
+      font-size: 20px;
+      margin: 5px;
+      padding: 6px 10px;
+      cursor: pointer;
+    }
+
+    .updated-date {
+      color: #666;
+      font-size: 18px;
+    }
+
+    .card {
+      border: 1px solid #ccc;
+      padding: 12px;
+      margin: 12px 0;
+    }
+  </style>
 </head>
 
 <body>
+  <h1>新商品情報</h1>
 
-<h1>新商品情報</h1>
+  <p><a href="index.html">トップページへ戻る</a></p>
 
-<h2>今週のおすすめ</h2>
+  <button onclick="document.body.style.fontSize='30px'">
+    文字を大きくする
+  </button>
 
-<ul>
-<li>北海道牛乳パン</li>
-<li>濃厚たまごサンド</li>
-<li>生クリームどら焼き</li>
-<li>国産いちごプリン</li>
-<li>お店で焼いたアップルパイ</li>
-</ul>
+  <button onclick="document.body.style.fontSize='22px'">
+    元に戻す
+  </button>
 
-<h2>近日発売予定</h2>
+  <p id="lastUpdated" class="updated-date">
+    最終更新日を確認しています...
+  </p>
 
-<ul>
-<li>チーズカレーパン</li>
-<li>濃厚ミルクシュークリーム</li>
-</ul>
+  <h2>新商品</h2>
+  <div id="products">商品を読み込んでいます...</div>
 
-<p>
-更新日 2026年11月24日
-</p>
+  <script>
+    const supabaseUrl = "https://llxysqzozhnikuznsuwy.supabase.co";
+    const supabaseKey = "sb_publishable_uv_8zUNxYc1tebjvnukzdg_nNF6kAip";
+    const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
-<p>
-<a href="index.html">トップページへ戻る</a>
-</p>
+    async function loadProducts() {
+      const area = document.getElementById("products");
+      const updatedArea = document.getElementById("lastUpdated");
 
+      const { data, error } = await supabaseClient
+        .from("products")
+        .select("product_name, price, corner, updated_at")
+        .eq("category", "新商品")
+        .order("updated_at", { ascending: false });
+
+      if (error) {
+        area.textContent = "商品を読み込めませんでした。";
+        updatedArea.textContent = "";
+        console.error("商品読込エラー:", error.message);
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        updatedArea.textContent = "最終更新日：まだ商品がありません";
+        area.textContent = "現在、新商品はありません。";
+        return;
+      }
+
+      const latestDate = new Date(data[0].updated_at);
+
+      updatedArea.textContent =
+        "最終更新日：" +
+        new Intl.DateTimeFormat("ja-JP", {
+          timeZone: "Asia/Tokyo",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit"
+        }).format(latestDate);
+
+      area.replaceChildren();
+
+      for (const item of data) {
+        const card = document.createElement("div");
+        card.className = "card";
+
+        const name = document.createElement("strong");
+        name.textContent = item.product_name || "";
+        card.appendChild(name);
+
+        const price = document.createElement("p");
+        price.textContent = "価格：" + (item.price || "");
+        card.appendChild(price);
+
+        const corner = document.createElement("p");
+        corner.textContent = "陳列コーナー：" + (item.corner || "");
+        card.appendChild(corner);
+
+        area.appendChild(card);
+      }
+    }
+
+    loadProducts();
+  </script>
 </body>
 </html>
