@@ -3,422 +3,361 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>商品登録管理画面</title>
-
+  <title>管理者ページ｜スーパー吉光</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
     body {
-      max-width: 800px;
+      max-width: 900px;
       margin: auto;
       padding: 20px;
-      font-size: 22px;
-      line-height: 1.8;
-      font-family: sans-serif;
+      font-size: 20px;
+      line-height: 1.7;
+      font-family: Arial, sans-serif;
     }
 
     input, select, button {
       box-sizing: border-box;
       width: 100%;
-      margin-bottom: 10px;
-      padding: 8px;
-      font-size: 22px;
+      margin: 6px 0 12px;
+      padding: 10px;
+      font-size: 20px;
     }
 
-    button {
-      cursor: pointer;
-    }
-
-    button:disabled {
-      cursor: wait;
-      opacity: 0.6;
-    }
-
-    .success {
-      color: green;
-      font-weight: bold;
-    }
-
-    .error {
-      color: red;
-      font-weight: bold;
-    }
+    button { cursor: pointer; }
 
     .card {
       border: 1px solid #ccc;
-      padding: 10px;
-      margin-top: 10px;
+      padding: 12px;
+      margin: 12px 0;
       overflow-wrap: anywhere;
     }
 
-    .card-actions {
+    .actions {
       display: flex;
-      gap: 10px;
-      margin-top: 10px;
+      gap: 8px;
     }
 
-    .card-actions button {
-      margin: 0;
-    }
+    .actions button { width: 50%; }
 
-    .delete-btn {
-      color: #a00;
-      background: #fff0f0;
-    }
-
-    .cancel-btn {
-      background: #eee;
-    }
-
-    @media (max-width: 480px) {
-      body {
-        padding: 12px;
-        font-size: 19px;
-      }
-
-      input, select, button {
-        font-size: 19px;
-      }
-    }
+    .delete-button { color: #a00; background: #fff0f0; }
+    .error { color: #b00020; }
+    .success { color: green; }
+    [hidden] { display: none !important; }
   </style>
 </head>
 
 <body>
-  <script>
+  <h1>スーパー吉光 管理者ページ</h1>
 
-const PASSWORD = "hondasou16";
+  <section id="loginPanel">
+    <h2>管理者ログイン</h2>
 
-const password =
-prompt("管理者パスワードを入力してください");
+    <label for="loginEmail">メールアドレス</label>
+    <input id="loginEmail" type="email" autocomplete="username" required>
 
-if(password !== PASSWORD){
+    <label for="loginPassword">パスワード</label>
+    <input id="loginPassword" type="password" autocomplete="current-password" required>
 
-document.body.innerHTML = `
+    <button id="loginButton" type="button" onclick="login()">ログイン</button>
+    <p id="loginStatus" aria-live="polite"></p>
+  </section>
 
-throw new Error("Unauthorized");
+  <main id="adminPanel" hidden>
+    <p id="signedInAs"></p>
+    <button type="button" onclick="logout()">ログアウト</button>
 
-}
+    <hr>
+    <h2>商品登録・編集</h2>
 
-</script>
-  <h1>スーパー吉光 チラシ商品登録</h1>
+    <label for="category">カテゴリー</label>
+    <select id="category">
+      <option value="肉">肉</option>
+      <option value="魚">魚</option>
+      <option value="野菜">野菜</option>
+      <option value="その他特売">その他特売</option>
+      <option value="新商品">新商品</option>
+    </select>
 
-  <p>カテゴリー</p>
-  <select id="category">
-    <option>肉</option>
-    <option>魚</option>
-    <option>野菜</option>
-    <option>その他特売</option>
-    <option>新商品</option>
-  </select>
+    <label for="productName">商品名</label>
+    <input id="productName">
 
-  <p>商品名</p>
-  <input id="product_name">
+    <label for="productPrice">価格</label>
+    <input id="productPrice" placeholder="例：88円">
 
-  <p>価格</p>
-  <input id="price" inputmode="decimal">
+    <label for="productCorner">陳列コーナー</label>
+    <input id="productCorner" placeholder="例：精肉売場">
 
-  <p>陳列コーナー</p>
-  <input id="corner">
+    <button id="productSaveButton" type="button" onclick="saveProduct()">
+      商品を登録
+    </button>
+    <button id="productCancelButton" type="button" onclick="cancelProductEdit()" hidden>
+      編集をキャンセル
+    </button>
+    <p id="productStatus" aria-live="polite"></p>
 
-  <button id="saveBtn" type="button" onclick="saveData()">登録</button>
+    <h3>登録済み商品</h3>
+    <div id="productList" aria-live="polite"></div>
 
-  <button
-    id="cancelEditBtn"
-    class="cancel-btn"
-    type="button"
-    onclick="cancelEdit()"
-    hidden
-  >
-    編集をキャンセル
-  </button>
+    <hr>
+    <h2>お知らせ登録・編集</h2>
 
-  <hr>
+    <label for="noticeMessage">お知らせ文</label>
+    <input id="noticeMessage" placeholder="例：本日の特売情報を更新しました">
 
-  <h2>状態</h2>
-  <p id="status" aria-live="polite">入力待ち</p>
+    <label for="noticeLinkText">リンク文字（省略可）</label>
+    <input id="noticeLinkText" placeholder="例：公式Instagram">
 
-  <hr>
+    <label for="noticeLinkUrl">リンク先URL（省略可）</label>
+    <input id="noticeLinkUrl" type="url" placeholder="https://example.com">
 
-  <h2>最近登録した商品</h2>
-  <div id="history" aria-live="polite">読込中...</div>
+    <button id="noticeSaveButton" type="button" onclick="saveAnnouncement()">
+      お知らせを登録
+    </button>
+    <button id="noticeCancelButton" type="button" onclick="cancelAnnouncementEdit()" hidden>
+      編集をキャンセル
+    </button>
+    <p id="noticeStatus" aria-live="polite"></p>
 
-  <hr>
-
-  <h2>お知らせを追加</h2>
-
-  <p>お知らせ文</p>
-  <input
-    id="noticeMessage"
-    placeholder="例：毎日、特売情報を更新しています"
-  >
-
-  <p>リンクに表示する文字（省略可）</p>
-  <input
-    id="noticeLinkText"
-    placeholder="例：今週の特売を見る"
-  >
-
-  <p>リンク先URL（省略可）</p>
-  <input
-    id="noticeLinkUrl"
-    type="url"
-    placeholder="https://example.com"
-  >
-
-  <button id="noticeSaveBtn" type="button" onclick="addAnnouncement()">
-    お知らせを登録
-  </button>
-
-  <div id="announcementStatus" aria-live="polite"></div>
-
-  <h3>登録済みのお知らせ</h3>
-  <div id="announcementAdminList" aria-live="polite">読込中...</div>
+    <h3>登録済みお知らせ</h3>
+    <div id="announcementList" aria-live="polite"></div>
+  </main>
 
   <script>
-    const supabaseUrl = "https://llxysqzozhnikuznsuwy.supabase.co";
-    const supabaseKey = "sb_publishable_uv_8zUNxYc1tebjvnukzdg_nNF6kAip";
-    const client = supabase.createClient(supabaseUrl, supabaseKey);
+    const SUPABASE_URL = "https://llxysqzozhnikuznsuwy.supabase.co";
+    const SUPABASE_PUBLISHABLE_KEY =
+      "sb_publishable_uv_8zUNxYc1tebjvnukzdg_nNF6kAip";
+    const supabaseClient = supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_PUBLISHABLE_KEY
+    );
 
-    let editingId = null;
+    let editingProductId = null;
+    let editingAnnouncementId = null;
+    let loadedUserId = null;
 
-    function escapeHtml(value) {
-      return String(value ?? "").replace(/[&<>"']/g, char => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#39;"
-      })[char]);
+    function showStatus(id, message, type = "") {
+      const element = document.getElementById(id);
+      element.textContent = message;
+      element.className = type;
     }
 
-    // 商品一覧を読み込む
-    async function loadData() {
-      const history = document.getElementById("history");
-      history.textContent = "読込中...";
+    async function login() {
+      const button = document.getElementById("loginButton");
+      const email = document.getElementById("loginEmail").value.trim();
+      const password = document.getElementById("loginPassword").value;
 
-      const { data, error } = await client
-        .from("products")
-        .select("*")
-        .order("id", { ascending: false })
-        .limit(20);
+      button.disabled = true;
+      showStatus("loginStatus", "ログイン中...");
+
+      const { error } = await supabaseClient.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      button.disabled = false;
 
       if (error) {
-        history.innerHTML =
-          `<p class="error">読込失敗：${escapeHtml(error.message)}</p>`;
+        showStatus("loginStatus", "ログインできませんでした。メールアドレスとパスワードを確認してください。", "error");
+        console.error(error.message);
         return;
       }
+
+      document.getElementById("loginPassword").value = "";
+      showStatus("loginStatus", "ログインしました。", "success");
+      await checkSession();
+    }
+
+    async function logout() {
+      const { error } = await supabaseClient.auth.signOut();
+
+      if (error) {
+        alert("ログアウトできませんでした：" + error.message);
+        return;
+      }
+
+      loadedUserId = null;
+      await checkSession();
+    }
+
+    async function checkSession() {
+      const { data, error } = await supabaseClient.auth.getSession();
+
+      if (error) {
+        showStatus("loginStatus", "ログイン状態を確認できませんでした。", "error");
+        return;
+      }
+
+      const session = data.session;
+      document.getElementById("loginPanel").hidden = Boolean(session);
+      document.getElementById("adminPanel").hidden = !session;
+
+      if (!session) {
+        document.getElementById("signedInAs").textContent = "";
+        return;
+      }
+
+      document.getElementById("signedInAs").textContent =
+        "ログイン中：" + (session.user.email || "");
+
+      if (loadedUserId !== session.user.id) {
+        loadedUserId = session.user.id;
+        await loadAll();
+      }
+    }
+
+    supabaseClient.auth.onAuthStateChange(() => {
+      setTimeout(checkSession, 0);
+    });
+
+    async function loadAll() {
+      await Promise.all([
+        loadProducts(),
+        loadAnnouncements()
+      ]);
+    }
+
+    // 商品一覧
+    async function loadProducts() {
+      const area = document.getElementById("productList");
+      area.textContent = "読込中...";
+
+      const { data, error } = await supabaseClient
+        .from("products")
+        .select("id, category, product_name, price, corner, updated_at")
+        .order("id", { ascending: false });
+
+      if (error) {
+        area.textContent = "商品を読み込めませんでした：" + error.message;
+        return;
+      }
+
+      area.replaceChildren();
 
       if (!data || data.length === 0) {
-        history.textContent = "登録商品なし";
+        area.textContent = "商品はありません。";
         return;
       }
 
-      history.innerHTML = data.map(item => `
-        <div class="card">
-          <b>${escapeHtml(item.category)}</b><br>
-          ${escapeHtml(item.product_name)}<br>
-          ${escapeHtml(item.price)}<br>
-          陳列コーナー：${escapeHtml(item.corner)}
+      for (const item of data) {
+        const card = document.createElement("section");
+        card.className = "card";
 
-          <div class="card-actions">
-            <button
-              type="button"
-              onclick="startEdit(${JSON.stringify(item.id)})"
-            >編集</button>
+        const details = document.createElement("p");
+        details.textContent =
+          item.category + "：" + item.product_name +
+          "／価格：" + item.price +
+          "／陳列コーナー：" + item.corner;
+        card.appendChild(details);
 
-            <button
-              class="delete-btn"
-              type="button"
-              onclick="deleteData(${JSON.stringify(item.id)})"
-            >削除</button>
-          </div>
-        </div>
-      `).join("");
+        const actions = document.createElement("div");
+        actions.className = "actions";
+
+        const editButton = document.createElement("button");
+        editButton.type = "button";
+        editButton.textContent = "編集";
+        editButton.addEventListener("click", () => editProduct(item));
+
+        const deleteButton = document.createElement("button");
+        deleteButton.type = "button";
+        deleteButton.className = "delete-button";
+        deleteButton.textContent = "削除";
+        deleteButton.addEventListener("click", () => deleteProduct(item.id));
+
+        actions.append(editButton, deleteButton);
+        card.appendChild(actions);
+        area.appendChild(card);
+      }
     }
 
-    // 商品を新規登録、または編集内容を保存
-    async function saveData() {
-      const status = document.getElementById("status");
-      const btn = document.getElementById("saveBtn");
-
-      const product = {
-        category: document.getElementById("category").value,
-        product_name: document.getElementById("product_name").value.trim(),
-        price: document.getElementById("price").value.trim(),
-        corner: document.getElementById("corner").value.trim()
-      };
-
-      if (!product.product_name) {
-        status.innerHTML =
-          "<span class='error'>商品名を入力してください。</span>";
-        return;
-      }
-
-      btn.disabled = true;
-      status.textContent = editingId === null ? "登録中..." : "更新中...";
-
-      const result = editingId === null
-        ? await client.from("products").insert([product])
-        : await client.from("products").update(product).eq("id", editingId);
-
-      if (result.error) {
-        const action = editingId === null ? "登録" : "更新";
-        status.innerHTML =
-          `<span class="error">❌ ${action}失敗：${escapeHtml(result.error.message)}</span>`;
-        btn.disabled = false;
-        return;
-      }
-
-      const wasEditing = editingId !== null;
-      status.innerHTML =
-        `<span class="success">✅ ${wasEditing ? "更新" : "登録"}完了</span>`;
-
-      resetForm();
-      await loadData();
-      btn.disabled = false;
-    }
-
-    // 商品を編集する
-    async function startEdit(id) {
-      const { data, error } = await client
-        .from("products")
-        .select("*")
-        .eq("id", id)
-        .single();
-
-      if (error) {
-        document.getElementById("status").innerHTML =
-          `<span class="error">編集する商品を読み込めませんでした：${escapeHtml(error.message)}</span>`;
-        return;
-      }
-
-      editingId = data.id;
-
-      document.getElementById("category").value = data.category ?? "肉";
-      document.getElementById("product_name").value = data.product_name ?? "";
-      document.getElementById("price").value = data.price ?? "";
-      document.getElementById("corner").value = data.corner ?? "";
-
-      document.getElementById("saveBtn").textContent = "変更を保存";
-      document.getElementById("cancelEditBtn").hidden = false;
-      document.getElementById("status").textContent =
-        "編集中です。内容を変更して保存してください。";
-
+    function editProduct(item) {
+      editingProductId = item.id;
+      document.getElementById("category").value = item.category;
+      document.getElementById("productName").value = item.product_name || "";
+      document.getElementById("productPrice").value = item.price || "";
+      document.getElementById("productCorner").value = item.corner || "";
+      document.getElementById("productSaveButton").textContent = "変更を保存";
+      document.getElementById("productCancelButton").hidden = false;
+      showStatus("productStatus", "商品を編集中です。");
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
-    // 商品を削除する
-    async function deleteData(id) {
-      if (!window.confirm("この商品を削除します。よろしいですか？")) {
+    async function saveProduct() {
+      const product = {
+        category: document.getElementById("category").value,
+        product_name: document.getElementById("productName").value.trim(),
+        price: document.getElementById("productPrice").value.trim(),
+        corner: document.getElementById("productCorner").value.trim()
+      };
+
+      if (!product.product_name) {
+        showStatus("productStatus", "商品名を入力してください。", "error");
         return;
       }
 
-      const status = document.getElementById("status");
-      status.textContent = "削除中...";
+      const button = document.getElementById("productSaveButton");
+      button.disabled = true;
 
-      const { error } = await client
+      const result = editingProductId === null
+        ? await supabaseClient.from("products").insert([product])
+        : await supabaseClient.from("products").update(product).eq("id", editingProductId);
+
+      button.disabled = false;
+
+      if (result.error) {
+        showStatus("productStatus", "保存に失敗しました：" + result.error.message, "error");
+        return;
+      }
+
+      showStatus(
+        "productStatus",
+        editingProductId === null ? "商品を登録しました。" : "商品を更新しました。",
+        "success"
+      );
+
+      cancelProductEdit();
+      await loadProducts();
+    }
+
+    async function deleteProduct(id) {
+      if (!confirm("この商品を削除しますか？")) return;
+
+      const { error } = await supabaseClient
         .from("products")
         .delete()
         .eq("id", id);
 
       if (error) {
-        status.innerHTML =
-          `<span class="error">❌ 削除失敗：${escapeHtml(error.message)}</span>`;
+        showStatus("productStatus", "削除に失敗しました：" + error.message, "error");
         return;
       }
 
-      if (editingId !== null && String(editingId) === String(id)) {
-        resetForm();
-      }
-
-      status.innerHTML = "<span class='success'>✅ 削除完了</span>";
-      await loadData();
+      showStatus("productStatus", "商品を削除しました。", "success");
+      await loadProducts();
     }
 
-    function cancelEdit() {
-      resetForm();
-      document.getElementById("status").textContent =
-        "編集をキャンセルしました。";
+    function cancelProductEdit() {
+      editingProductId = null;
+      document.getElementById("category").value = "肉";
+      document.getElementById("productName").value = "";
+      document.getElementById("productPrice").value = "";
+      document.getElementById("productCorner").value = "";
+      document.getElementById("productSaveButton").textContent = "商品を登録";
+      document.getElementById("productCancelButton").hidden = true;
     }
 
-    function resetForm() {
-      editingId = null;
-
-      document.getElementById("product_name").value = "";
-      document.getElementById("price").value = "";
-      document.getElementById("corner").value = "";
-
-      document.getElementById("saveBtn").textContent = "登録";
-      document.getElementById("cancelEditBtn").hidden = true;
-    }
-
-    // お知らせを登録する
-    async function addAnnouncement() {
-      const message =
-        document.getElementById("noticeMessage").value.trim();
-      const linkText =
-        document.getElementById("noticeLinkText").value.trim();
-      const linkUrl =
-        document.getElementById("noticeLinkUrl").value.trim();
-      const status =
-        document.getElementById("announcementStatus");
-      const button =
-        document.getElementById("noticeSaveBtn");
-
-      if (!message) {
-        status.innerHTML =
-          "<span class='error'>お知らせ文を入力してください。</span>";
-        return;
-      }
-
-      if (linkUrl && !/^https?:\/\//i.test(linkUrl)) {
-        status.innerHTML =
-          "<span class='error'>リンク先は http:// または https:// から入力してください。</span>";
-        return;
-      }
-
-      button.disabled = true;
-      status.textContent = "登録中...";
-
-      const { error } = await client
-        .from("announcements")
-        .insert([{
-          message: message,
-          link_text: linkText || null,
-          link_url: linkUrl || null
-        }]);
-
-      button.disabled = false;
-
-      if (error) {
-        status.innerHTML =
-          `<span class="error">登録失敗：${escapeHtml(error.message)}</span>`;
-        return;
-      }
-
-      status.innerHTML =
-        "<span class='success'>お知らせを登録しました。</span>";
-
-      document.getElementById("noticeMessage").value = "";
-      document.getElementById("noticeLinkText").value = "";
-      document.getElementById("noticeLinkUrl").value = "";
-
-      await loadAnnouncementsForAdmin();
-    }
-
-    // 登録済みのお知らせを読み込む
-    async function loadAnnouncementsForAdmin() {
-      const area = document.getElementById("announcementAdminList");
+    // お知らせ一覧
+    async function loadAnnouncements() {
+      const area = document.getElementById("announcementList");
       area.textContent = "読込中...";
 
-      const { data, error } = await client
+      const { data, error } = await supabaseClient
         .from("announcements")
-        .select("*")
+        .select("id, message, link_text, link_url, created_at")
         .order("created_at", { ascending: false });
 
       if (error) {
-        area.innerHTML =
-          `<p class="error">読込失敗：${escapeHtml(error.message)}</p>`;
+        area.textContent = "お知らせを読み込めませんでした：" + error.message;
         return;
       }
 
@@ -430,12 +369,12 @@ throw new Error("Unauthorized");
       }
 
       for (const item of data) {
-        const row = document.createElement("div");
-        row.className = "card";
+        const card = document.createElement("section");
+        card.className = "card";
 
         const message = document.createElement("p");
-        message.textContent = item.message;
-        row.append(message);
+        message.textContent = item.message || "";
+        card.appendChild(message);
 
         if (item.link_url) {
           const link = document.createElement("a");
@@ -443,48 +382,114 @@ throw new Error("Unauthorized");
           link.textContent = item.link_text || item.link_url;
           link.target = "_blank";
           link.rel = "noopener noreferrer";
-          row.append(link);
+          card.appendChild(link);
         }
 
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "delete-btn";
-        button.textContent = "このお知らせを削除";
-        button.addEventListener("click", () => deleteAnnouncement(item.id));
-        row.append(button);
+        const actions = document.createElement("div");
+        actions.className = "actions";
 
-        area.append(row);
+        const editButton = document.createElement("button");
+        editButton.type = "button";
+        editButton.textContent = "編集";
+        editButton.addEventListener("click", () => editAnnouncement(item));
+
+        const deleteButton = document.createElement("button");
+        deleteButton.type = "button";
+        deleteButton.className = "delete-button";
+        deleteButton.textContent = "削除";
+        deleteButton.addEventListener("click", () => deleteAnnouncement(item.id));
+
+        actions.append(editButton, deleteButton);
+        card.appendChild(actions);
+        area.appendChild(card);
       }
     }
 
-    // お知らせを削除する
-    async function deleteAnnouncement(id) {
-      if (!window.confirm("このお知らせを削除しますか？")) {
+    function editAnnouncement(item) {
+      editingAnnouncementId = item.id;
+      document.getElementById("noticeMessage").value = item.message || "";
+      document.getElementById("noticeLinkText").value = item.link_text || "";
+      document.getElementById("noticeLinkUrl").value = item.link_url || "";
+      document.getElementById("noticeSaveButton").textContent = "変更を保存";
+      document.getElementById("noticeCancelButton").hidden = false;
+      showStatus("noticeStatus", "お知らせを編集中です。");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    async function saveAnnouncement() {
+      const message = document.getElementById("noticeMessage").value.trim();
+      const linkText = document.getElementById("noticeLinkText").value.trim();
+      const linkUrl = document.getElementById("noticeLinkUrl").value.trim();
+
+      if (!message) {
+        showStatus("noticeStatus", "お知らせ文を入力してください。", "error");
         return;
       }
 
-      const status = document.getElementById("announcementStatus");
-      status.textContent = "削除中...";
+      if (linkUrl && !/^https?:\/\//i.test(linkUrl)) {
+        showStatus("noticeStatus", "リンクURLは http:// または https:// から入力してください。", "error");
+        return;
+      }
 
-      const { error } = await client
+      const announcement = {
+        message,
+        link_text: linkText || null,
+        link_url: linkUrl || null
+      };
+
+      const button = document.getElementById("noticeSaveButton");
+      button.disabled = true;
+
+      const result = editingAnnouncementId === null
+        ? await supabaseClient.from("announcements").insert([announcement])
+        : await supabaseClient.from("announcements")
+            .update(announcement)
+            .eq("id", editingAnnouncementId);
+
+      button.disabled = false;
+
+      if (result.error) {
+        showStatus("noticeStatus", "保存に失敗しました：" + result.error.message, "error");
+        return;
+      }
+
+      showStatus(
+        "noticeStatus",
+        editingAnnouncementId === null ? "お知らせを登録しました。" : "お知らせを更新しました。",
+        "success"
+      );
+
+      cancelAnnouncementEdit();
+      await loadAnnouncements();
+    }
+
+    async function deleteAnnouncement(id) {
+      if (!confirm("このお知らせを削除しますか？")) return;
+
+      const { error } = await supabaseClient
         .from("announcements")
         .delete()
         .eq("id", id);
 
       if (error) {
-        status.innerHTML =
-          `<span class="error">削除失敗：${escapeHtml(error.message)}</span>`;
+        showStatus("noticeStatus", "削除に失敗しました：" + error.message, "error");
         return;
       }
 
-      status.innerHTML =
-        "<span class='success'>お知らせを削除しました。</span>";
-
-      await loadAnnouncementsForAdmin();
+      showStatus("noticeStatus", "お知らせを削除しました。", "success");
+      await loadAnnouncements();
     }
 
-    loadData();
-    loadAnnouncementsForAdmin();
+    function cancelAnnouncementEdit() {
+      editingAnnouncementId = null;
+      document.getElementById("noticeMessage").value = "";
+      document.getElementById("noticeLinkText").value = "";
+      document.getElementById("noticeLinkUrl").value = "";
+      document.getElementById("noticeSaveButton").textContent = "お知らせを登録";
+      document.getElementById("noticeCancelButton").hidden = true;
+    }
+
+    checkSession();
   </script>
 </body>
 </html>
