@@ -25,7 +25,7 @@
   <h1 id="pageHeading">店舗管理</h1>
 
   <section id="loginPanel">
-    <h2>管理者ログイン</h2>
+    <h2 id="loginHeading">管理者ログイン</h2>
     <label for="loginEmail">メールアドレス</label>
     <input id="loginEmail" type="email" autocomplete="username">
     <label for="loginPassword">パスワード</label>
@@ -117,6 +117,27 @@
       }
       document.getElementById("loginPassword").value = "";
       await checkSession();
+    }
+
+    async function loadLoginStoreName() {
+      if (!storeSlug) {
+        document.title = "店舗管理者ログイン｜スーパー吉光";
+        return;
+      }
+      const { data, error } = await client.from("stores")
+        .select("name")
+        .eq("slug", storeSlug)
+        .eq("is_active", true)
+        .maybeSingle();
+      if (error || !data) {
+        document.getElementById("pageHeading").textContent = "店舗が見つかりません";
+        document.getElementById("loginHeading").textContent = "店舗管理者ログイン";
+        document.title = "店舗が見つかりません｜スーパー吉光";
+        return;
+      }
+      document.getElementById("pageHeading").textContent = data.name + " 管理ページ";
+      document.getElementById("loginHeading").textContent = data.name + " 管理者ログイン";
+      document.title = data.name + " 管理者ログイン｜スーパー吉光";
     }
 
     async function logout() {
@@ -513,6 +534,7 @@
       document.getElementById("noticeCancelButton").hidden = true;
     }
 
+    loadLoginStoreName();
     checkSession();
   </script>
 </body>
