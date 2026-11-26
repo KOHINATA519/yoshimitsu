@@ -1,29 +1,127 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<title>魚コーナー特売</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>魚コーナー特売｜スーパー吉光</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    body {
+      max-width: 900px;
+      margin: auto;
+      padding: 20px;
+      font-size: 22px;
+      line-height: 1.8;
+      font-family: Arial, sans-serif;
+    }
+
+    a {
+      font-size: 24px;
+    }
+
+    button {
+      font-size: 20px;
+      margin: 5px;
+      padding: 6px 10px;
+      cursor: pointer;
+    }
+
+    .updated-date {
+      color: #666;
+      font-size: 18px;
+    }
+
+    .card {
+      border: 1px solid #ccc;
+      padding: 12px;
+      margin: 12px 0;
+    }
+  </style>
 </head>
 
 <body>
+  <h1>魚コーナー特売</h1>
 
-<h1>魚コーナー特売</h1>
+  <p><a href="index.html">トップページへ戻る</a></p>
 
-<ul>
-<li>生鮭切身　1切128円</li>
-<li>まぐろ刺身　398円</li>
-<li>あじ開き　1枚98円</li>
-<li>しらす　198円</li>
-<li>塩さば　1枚148円</li>
-</ul>
+  <button onclick="document.body.style.fontSize='30px'">
+    文字を大きくする
+  </button>
 
-<p>
-更新日 2026年11月24日
-</p>
+  <button onclick="document.body.style.fontSize='22px'">
+    元に戻す
+  </button>
 
-<p>
-<a href="index.html">トップページへ戻る</a>
-</p>
+  <p id="lastUpdated" class="updated-date">
+    最終更新日を確認しています...
+  </p>
 
+  <div id="products">商品を読み込んでいます...</div>
+
+  <script>
+    const supabaseUrl = "https://llxysqzozhnikuznsuwy.supabase.co";
+    const supabaseKey = "sb_publishable_uv_8zUNxYc1tebjvnukzdg_nNF6kAip";
+    const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+    async function loadProducts() {
+      const area = document.getElementById("products");
+      const updatedArea = document.getElementById("lastUpdated");
+
+      const { data, error } = await supabaseClient
+        .from("products")
+        .select("product_name, price, corner, updated_at")
+        .eq("category", "魚")
+        .order("updated_at", { ascending: false });
+
+      if (error) {
+        area.textContent = "商品を読み込めませんでした。";
+        updatedArea.textContent = "";
+        console.error("商品読込エラー:", error.message);
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        updatedArea.textContent = "最終更新日：まだ商品がありません";
+        area.textContent = "現在、魚コーナーの商品はありません。";
+        return;
+      }
+
+      const latestDate = new Date(data[0].updated_at);
+
+      updatedArea.textContent =
+        "最終更新日：" +
+        new Intl.DateTimeFormat("ja-JP", {
+          timeZone: "Asia/Tokyo",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit"
+        }).format(latestDate);
+
+      area.replaceChildren();
+
+      for (const item of data) {
+        const card = document.createElement("div");
+        card.className = "card";
+
+        const name = document.createElement("strong");
+        name.textContent = item.product_name || "";
+        card.appendChild(name);
+
+        const price = document.createElement("p");
+        price.textContent = "価格：" + (item.price || "");
+        card.appendChild(price);
+
+        const corner = document.createElement("p");
+        corner.textContent = "陳列コーナー：" + (item.corner || "");
+        card.appendChild(corner);
+
+        area.appendChild(card);
+      }
+    }
+
+    loadProducts();
+  </script>
 </body>
 </html>
