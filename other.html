@@ -17,6 +17,17 @@
       font-family: Arial, sans-serif;
     }
 
+    a {
+      font-size: 24px;
+    }
+
+    button {
+      font-size: 20px;
+      margin: 5px;
+      padding: 6px 10px;
+      cursor: pointer;
+    }
+
     .updated-date {
       color: #666;
       font-size: 18px;
@@ -32,9 +43,23 @@
 
 <body>
   <h1>その他特売</h1>
-  <p><a href="index.html">トップページへ戻る</a></p>
 
-  <p id="lastUpdated" class="updated-date">最終更新日を確認しています...</p>
+  <p>
+    <a href="index.html">トップページへ戻る</a>
+  </p>
+
+  <button onclick="document.body.style.fontSize='30px'">
+    文字を大きくする
+  </button>
+
+  <button onclick="document.body.style.fontSize='22px'">
+    元に戻す
+  </button>
+
+  <p id="lastUpdated" class="updated-date">
+    最終更新日を確認しています...
+  </p>
+
   <div id="products">商品を読み込んでいます...</div>
 
   <script>
