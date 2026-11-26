@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>本部管理｜スーパー吉光</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { max-width: 1000px; margin: auto; padding: 20px; font: 20px/1.7 Arial, sans-serif; }
+    input, button { box-sizing: border-box; width: 100%; padding: 10px; margin: 6px 0 12px; font-size: 20px; }
+    button { cursor: pointer; }
+    .card { border: 1px solid #ccc; padding: 14px; margin: 14px 0; overflow-wrap: anywhere; }
+    .error { color: #b00020; } .success { color: green; }
+    .staff-row { border-top: 1px solid #ddd; padding: 8px 0; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <h1>本部管理</h1>
+
+  <section id="loginPanel">
+    <h2>本部ログイン</h2>
+    <label for="email">メールアドレス</label>
+    <input id="email" type="email" autocomplete="username">
+    <label for="password">パスワード</label>
+    <input id="password" type="password" autocomplete="current-password">
+    <button id="loginButton" type="button" onclick="login()">ログイン</button>
+    <p id="loginStatus" aria-live="polite"></p>
+  </section>
+
+  <main id="hqPanel" hidden>
+    <p id="signedInAs"></p>
+    <button type="button" onclick="logout()">ログアウト</button>
+    <hr>
+    <h2>店舗を追加</h2>
+    <label for="storeName">店舗名</label>
+    <input id="storeName" placeholder="例：スーパー吉光 川越店">
+    <label for="storeSlug">URL用の店舗ID（英小文字・数字・ハイフン）</label>
+    <input id="storeSlug" placeholder="例：kawagoe">
+    <button id="createStoreButton" type="button" onclick="createStore()">店舗を作成</button>
+    <p id="storeStatus" aria-live="polite"></p>
+    <h2>登録済み店舗</h2>
+    <div id="stores" aria-live="polite">読み込み中...</div>
+  </main>
+
+  <script>
+    const URL_BASE = "https://llxysqzozhnikuznsuwy.supabase.co";
+    const PUBLIC_KEY = "sb_publishable_uv_8zUNxYc1tebjvnukzdg_nNF6kAip";
+    const client = supabase.createClient(URL_BASE, PUBLIC_KEY);
+    let loaded = false;
+
+    function setStatus(id, text, cls) {
+      const el = document.getElementById(id);
+      el.textContent = text;
+      el.className = cls || "";
+    }
+
+    async function login() {
+      const b = document.getElementById("loginButton");
+      b.disabled = true;
+      const { error } = await client.auth.signInWithPassword({
+        email: document.getElementById("email").value.trim(),
+        password: document.getElementById("password").value
+      });
+      b.disabled = false;
+      if (error) {
+        setStatus("loginStatus", "ログインできませんでした。入力内容を確認してください。", "error");
+        return;
+      }
+      document.getElementById("password").value = "";
+      await checkSession();
+    }
+
+    async function logout() {
+      await client.auth.signOut();
+      loaded = false;
+      await checkSession();
+    }
+
+    async function checkSession() {
+      const { data } = await client.auth.getSession();
+      const session = data.session;
+      if (!session) {
+        document.getElementById("loginPanel").hidden = false;
+        document.getElementById("hqPanel").hidden = true;
+        return;
+      }
+
+      const { data: hqUser, error } = await client.from("hq_users")
+        .select("user_id").eq("user_id", session.user.id).maybeSingle();
+
+      if (error || !hqUser) {
+        document.getElementById("loginPanel").hidden = false;
+        document.getElementById("hqPanel").hidden = true;
+        setStatus("loginStatus", "本部管理権限がありません。", "error");
+        await client.auth.signOut();
+        return;
+      }
+
+      document.getElementById("loginPanel").hidden = true;
+      document.getElementById("hqPanel").hidden = false;
+      document.getElementById("signedInAs").textContent = "本部ログイン中：" + session.user.email;
+      if (!loaded) {
+        loaded = true;
+        await loadStores();
+      }
+    }
+
+    async function callHQ(action, data) {
+      const result = await client.functions.invoke("hq-admin", {
+        body: Object.assign({ action: action }, data || {})
+      });
+      if (result.error) throw result.error;
+      if (result.data && result.data.error) throw new Error(result.data.error);
+      return result.data;
+    }
+
+    async function createStore() {
+      const name = document.getElementById("storeName").value.trim();
+      const slug = document.getElementById("storeSlug").value.trim().toLowerCase();
+      if (!name || !/^[a-z0-9-]{2,40}$/.test(slug)) {
+        setStatus("storeStatus", "店舗名と、英小文字・数字・ハイフン2〜40文字の店舗IDを入力してください。", "error");
+        return;
+      }
+      const button = document.getElementById("createStoreButton");
+      button.disabled = true;
+      try {
+        await callHQ("create_store", { name: name, slug: slug });
+        document.getElementById("storeName").value = "";
+        document.getElementById("storeSlug").value = "";
+        setStatus("storeStatus", "店舗を作成しました。店舗管理者を招待できます。", "success");
+        await loadStores();
+      } catch (e) {
+        setStatus("storeStatus", "店舗を作成できませんでした：" + e.message, "error");
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    async function loadStores() {
+      const area = document.getElementById("stores");
+      area.textContent = "読み込み中...";
+      try {
+        const result = await callHQ("list_stores");
+        area.replaceChildren();
+        for (const store of result.stores || []) {
+          const card = document.createElement("section");
+          card.className = "card";
+          const heading = document.createElement("h3");
+          heading.textContent = store.name + "（" + store.slug + "）";
+          card.appendChild(heading);
+
+          const status = document.createElement("p");
+          status.textContent = store.is_active ? "公開中" : "停止中";
+          card.appendChild(status);
+
+          const siteLink = document.createElement("a");
+          siteLink.href = "index.html?store=" + encodeURIComponent(store.slug);
+          siteLink.textContent = "店舗サイトを開く";
+          card.appendChild(siteLink);
+          card.appendChild(document.createElement("br"));
+
+          const adminLink = document.createElement("a");
+          adminLink.href = "admin.html?store=" + encodeURIComponent(store.slug);
+          adminLink.textContent = "店舗管理画面を開く";
+          card.appendChild(adminLink);
+
+          const toggle = document.createElement("button");
+          toggle.type = "button";
+          toggle.textContent = store.is_active ? "店舗サイトを停止" : "店舗サイトを公開";
+          toggle.addEventListener("click", async function() {
+            if (!confirm(store.is_active ? "この店舗サイトを停止しますか？" : "この店舗サイトを公開しますか？")) return;
+            try {
+              await callHQ("set_store_active", { store_id: store.id, is_active: !store.is_active });
+              await loadStores();
+            } catch (e) { alert("変更できませんでした：" + e.message); }
+          });
+          card.appendChild(toggle);
+
+          const inviteHeading = document.createElement("h4");
+          inviteHeading.textContent = "店舗管理者を招待";
+          card.appendChild(inviteHeading);
+          const email = document.createElement("input");
+          email.type = "email";
+          email.placeholder = "staff@example.com";
+          card.appendChild(email);
+          const invite = document.createElement("button");
+          invite.type = "button";
+          invite.textContent = "招待・権限付与";
+          invite.addEventListener("click", async function() {
+            if (!email.value.trim()) { alert("メールアドレスを入力してください。"); return; }
+            invite.disabled = true;
+            try {
+              const response = await callHQ("invite_store_admin", {
+                store_id: store.id,
+                email: email.value.trim()
+              });
+              alert(response.message || "権限を付与しました。");
+              email.value = "";
+              await loadStoreAdmins(store.id, card);
+            } catch (e) {
+              alert("招待できませんでした：" + e.message);
+            } finally { invite.disabled = false; }
+          });
+          card.appendChild(invite);
+
+          const staffArea = document.createElement("div");
+          staffArea.className = "staff-list";
+          card.appendChild(staffArea);
+          area.appendChild(card);
+          await loadStoreAdmins(store.id, card);
+        }
+
+        if (!result.stores || result.stores.length === 0) {
+          area.textContent = "店舗がまだありません。";
+        }
+      } catch (e) {
+        area.textContent = "店舗を読み込めませんでした：" + e.message;
+      }
+    }
+
+    async function loadStoreAdmins(storeId, card) {
+      const area = card.querySelector(".staff-list");
+      area.textContent = "管理者一覧を読み込み中...";
+      try {
+        const result = await callHQ("list_store_admins", { store_id: storeId });
+        area.replaceChildren();
+        const title = document.createElement("h4");
+        title.textContent = "店舗管理者";
+        area.appendChild(title);
+        for (const member of result.members || []) {
+          const row = document.createElement("div");
+          row.className = "staff-row";
+          row.append(document.createTextNode(member.email + " "));
+          const remove = document.createElement("button");
+          remove.type = "button";
+          remove.textContent = "権限を解除";
+          remove.addEventListener("click", async function() {
+            if (!confirm(member.email + " の店舗管理権限を解除しますか？")) return;
+            try {
+              await callHQ("revoke_store_admin", {
+                store_id: storeId,
+                user_id: member.user_id
+              });
+              await loadStoreAdmins(storeId, card);
+            } catch (e) { alert("解除できませんでした：" + e.message); }
+          });
+          row.appendChild(remove);
+          area.appendChild(row);
+        }
+        if (!result.members || result.members.length === 0) {
+          const p = document.createElement("p");
+          p.textContent = "管理者はまだ登録されていません。";
+          area.appendChild(p);
+        }
+      } catch (e) {
+        area.textContent = "管理者一覧を読み込めませんでした：" + e.message;
+      }
+    }
+
+    client.auth.onAuthStateChange(function() { setTimeout(checkSession, 0); });
+    checkSession();
+  </script>
+</body>
+</html>
