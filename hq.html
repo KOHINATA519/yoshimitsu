@@ -110,7 +110,19 @@
       const result = await client.functions.invoke("clever-endpoint", {
         body: Object.assign({ action: action }, data || {})
       });
-      if (result.error) throw result.error;
+      if (result.error) {
+        let message = result.error.message || "本部処理に失敗しました。";
+        try {
+          const response = result.error.context;
+          if (response && typeof response.clone === "function") {
+            const body = await response.clone().json();
+            if (body && body.error) message = body.error;
+          }
+        } catch (_) {
+          // JSON応答でない場合は、元のエラーメッセージを表示します。
+        }
+        throw new Error(message);
+      }
       if (result.data && result.data.error) throw new Error(result.data.error);
       return result.data;
     }
