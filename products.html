@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>特売商品｜スーパー吉光</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    body {
+      max-width: 900px;
+      margin: auto;
+      padding: 20px;
+      font-size: 22px;
+      line-height: 1.8;
+      font-family: Arial, sans-serif;
+    }
+
+    a { font-size: 24px; }
+
+    button {
+      font-size: 20px;
+      margin: 5px;
+      padding: 6px 10px;
+      cursor: pointer;
+    }
+
+    .updated-date {
+      color: #666;
+      font-size: 18px;
+    }
+
+    .card {
+      border: 1px solid #ccc;
+      padding: 12px;
+      margin: 12px 0;
+    }
+
+    .error { color: #b00020; }
+  </style>
+</head>
+
+<body>
+  <h1 id="pageTitle">商品一覧</h1>
+
+  <p><a href="index.html">トップページへ戻る</a></p>
+
+  <button type="button" onclick="document.body.style.fontSize='30px'">
+    文字を大きくする
+  </button>
+
+  <button type="button" onclick="document.body.style.fontSize='22px'">
+    元に戻す
+  </button>
+
+  <p id="lastUpdated" class="updated-date" aria-live="polite"></p>
+  <div id="products" aria-live="polite">商品を読み込んでいます...</div>
+
+  <script>
+    const SUPABASE_URL = "https://llxysqzozhnikuznsuwy.supabase.co";
+    const SUPABASE_PUBLISHABLE_KEY =
+      "sb_publishable_uv_8zUNxYc1tebjvnukzdg_nNF6kAip";
+    const supabaseClient = supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_PUBLISHABLE_KEY
+    );
+
+    const allowedCategories = ["肉", "魚", "野菜", "その他特売", "新商品"];
+    const category = new URLSearchParams(location.search).get("category");
+    const area = document.getElementById("products");
+    const updatedArea = document.getElementById("lastUpdated");
+
+    if (!allowedCategories.includes(category)) {
+      document.getElementById("pageTitle").textContent = "カテゴリーが指定されていません";
+      area.textContent = "トップページからカテゴリーを選んでください。";
+    } else {
+      document.title = category + "｜スーパー吉光";
+      document.getElementById("pageTitle").textContent =
+        category + (category === "新商品" ? "情報" : "の特売品コーナー");
+
+      loadProducts(category);
+    }
+
+    async function loadProducts(category) {
+      const { data, error } = await supabaseClient
+        .from("products")
+        .select("product_name, price, corner, created_at, updated_at")
+        .eq("category", category)
+        .order("updated_at", { ascending: false });
+
+      if (error) {
+        area.textContent = "商品を読み込めませんでした。";
+        updatedArea.textContent = "";
+        console.error("商品読込エラー:", error.message);
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        updatedArea.textContent = "最終更新日：まだ商品がありません";
+        area.textContent = "現在、このカテゴリーの商品はありません。";
+        return;
+      }
+
+      const latest = data[0].updated_at || data[0].created_at;
+
+      if (latest) {
+        updatedArea.textContent = "最終更新日：" +
+          new Intl.DateTimeFormat("ja-JP", {
+            timeZone: "Asia/Tokyo",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit"
+          }).format(new Date(latest));
+      }
+
+      area.replaceChildren();
+
+      for (const item of data) {
+        const card = document.createElement("section");
+        card.className = "card";
+
+        const name = document.createElement("h2");
+        name.textContent = item.product_name || "商品名未設定";
+        card.appendChild(name);
+
+        const price = document.createElement("p");
+        price.textContent = "価格：" + (item.price || "未設定");
+        card.appendChild(price);
+
+        const corner = document.createElement("p");
+        corner.textContent = "陳列コーナー：" + (item.corner || "未設定");
+        card.appendChild(corner);
+
+        area.appendChild(card);
+      }
+    }
+  </script>
+</body>
+</html>
