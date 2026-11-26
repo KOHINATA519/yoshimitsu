@@ -94,9 +94,6 @@ prompt("管理者パスワードを入力してください");
 if(password !== PASSWORD){
 
 document.body.innerHTML = `
-<h1>アクセス拒否</h1>
-<p>管理者のみ利用できます。</p>
-`;
 
 throw new Error("Unauthorized");
 
