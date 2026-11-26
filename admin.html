@@ -16,7 +16,7 @@
       font-family: Arial, sans-serif;
     }
 
-    input, select, button {
+    input, select, button, textarea {
       box-sizing: border-box;
       width: 100%;
       margin: 6px 0 12px;
@@ -24,7 +24,13 @@
       font-size: 20px;
     }
 
+    textarea {
+      min-height: 180px;
+      line-height: 1.6;
+    }
+
     button { cursor: pointer; }
+    button:disabled { cursor: wait; opacity: 0.6; }
 
     .card {
       border: 1px solid #ccc;
@@ -39,11 +45,15 @@
     }
 
     .actions button { width: 50%; }
-
     .delete-button { color: #a00; background: #fff0f0; }
     .error { color: #b00020; }
     .success { color: green; }
     [hidden] { display: none !important; }
+
+    @media (max-width: 500px) {
+      body { padding: 12px; font-size: 18px; }
+      input, select, button, textarea { font-size: 18px; }
+    }
   </style>
 </head>
 
@@ -68,15 +78,23 @@
     <button type="button" onclick="logout()">ログアウト</button>
 
     <hr>
+    <h2>カテゴリー管理</h2>
+
+    <label for="newCategoryName">新しいカテゴリー名</label>
+    <input id="newCategoryName" placeholder="例：お菓子">
+
+    <button type="button" onclick="addCategory()">カテゴリーを追加</button>
+    <p id="categoryStatus" aria-live="polite"></p>
+
+    <h3>カテゴリー一覧</h3>
+    <div id="categoryList" aria-live="polite">読込中...</div>
+
+    <hr>
     <h2>商品登録・編集</h2>
 
     <label for="category">カテゴリー</label>
     <select id="category">
-      <option value="肉">肉</option>
-      <option value="魚">魚</option>
-      <option value="野菜">野菜</option>
-      <option value="その他特売">その他特売</option>
-      <option value="新商品">新商品</option>
+      <option value="">カテゴリーを読み込み中...</option>
     </select>
 
     <label for="productName">商品名</label>
@@ -91,10 +109,39 @@
     <button id="productSaveButton" type="button" onclick="saveProduct()">
       商品を登録
     </button>
-    <button id="productCancelButton" type="button" onclick="cancelProductEdit()" hidden>
+
+    <button
+      id="productCancelButton"
+      type="button"
+      onclick="cancelProductEdit()"
+      hidden
+    >
       編集をキャンセル
     </button>
+
     <p id="productStatus" aria-live="polite"></p>
+
+    <h3>商品をまとめて登録</h3>
+    <p>
+      上のカテゴリーを選んで、1行に1商品ずつ入力してください。<br>
+      入力形式：商品名 | 価格 | 陳列コーナー
+    </p>
+
+    <textarea
+      id="bulkProducts"
+      aria-label="まとめて登録する商品"
+      placeholder="豚こま切れ | 88円 | 精肉売場&#10;牛切り落とし | 198円 | 精肉売場"
+    ></textarea>
+
+    <button
+      id="bulkSaveButton"
+      type="button"
+      onclick="bulkSaveProducts()"
+    >
+      まとめて登録
+    </button>
+
+    <p id="bulkStatus" aria-live="polite"></p>
 
     <h3>登録済み商品</h3>
     <div id="productList" aria-live="polite"></div>
@@ -103,20 +150,34 @@
     <h2>お知らせ登録・編集</h2>
 
     <label for="noticeMessage">お知らせ文</label>
-    <input id="noticeMessage" placeholder="例：本日の特売情報を更新しました">
+    <input
+      id="noticeMessage"
+      placeholder="例：本日の特売情報を更新しました"
+    >
 
     <label for="noticeLinkText">リンク文字（省略可）</label>
     <input id="noticeLinkText" placeholder="例：公式Instagram">
 
     <label for="noticeLinkUrl">リンク先URL（省略可）</label>
-    <input id="noticeLinkUrl" type="url" placeholder="https://example.com">
+    <input
+      id="noticeLinkUrl"
+      type="url"
+      placeholder="https://example.com"
+    >
 
     <button id="noticeSaveButton" type="button" onclick="saveAnnouncement()">
       お知らせを登録
     </button>
-    <button id="noticeCancelButton" type="button" onclick="cancelAnnouncementEdit()" hidden>
+
+    <button
+      id="noticeCancelButton"
+      type="button"
+      onclick="cancelAnnouncementEdit()"
+      hidden
+    >
       編集をキャンセル
     </button>
+
     <p id="noticeStatus" aria-live="polite"></p>
 
     <h3>登録済みお知らせ</h3>
@@ -127,6 +188,7 @@
     const SUPABASE_URL = "https://llxysqzozhnikuznsuwy.supabase.co";
     const SUPABASE_PUBLISHABLE_KEY =
       "sb_publishable_uv_8zUNxYc1tebjvnukzdg_nNF6kAip";
+
     const supabaseClient = supabase.createClient(
       SUPABASE_URL,
       SUPABASE_PUBLISHABLE_KEY
@@ -158,7 +220,11 @@
       button.disabled = false;
 
       if (error) {
-        showStatus("loginStatus", "ログインできませんでした。メールアドレスとパスワードを確認してください。", "error");
+        showStatus(
+          "loginStatus",
+          "ログインできませんでした。メールアドレスとパスワードを確認してください。",
+          "error"
+        );
         console.error(error.message);
         return;
       }
@@ -212,9 +278,116 @@
 
     async function loadAll() {
       await Promise.all([
+        loadCategories(),
         loadProducts(),
         loadAnnouncements()
       ]);
+    }
+
+    // カテゴリー一覧と商品登録欄を更新
+    async function loadCategories() {
+      const select = document.getElementById("category");
+      const area = document.getElementById("categoryList");
+      const previousValue = select.value;
+
+      const { data, error } = await supabaseClient
+        .from("categories")
+        .select("name")
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        select.innerHTML = '<option value="">読込失敗</option>';
+        area.textContent = "カテゴリーを読み込めませんでした：" + error.message;
+        return;
+      }
+
+      select.replaceChildren();
+      area.replaceChildren();
+
+      for (const item of data || []) {
+        const option = document.createElement("option");
+        option.value = item.name;
+        option.textContent = item.name;
+        select.appendChild(option);
+
+        const row = document.createElement("p");
+        row.append(document.createTextNode(item.name + " "));
+
+        const deleteButton = document.createElement("button");
+        deleteButton.type = "button";
+        deleteButton.textContent = "削除";
+        deleteButton.addEventListener(
+          "click",
+          () => deleteCategory(item.name)
+        );
+
+        row.appendChild(deleteButton);
+        area.appendChild(row);
+      }
+
+      if (!data || data.length === 0) {
+        select.innerHTML = '<option value="">カテゴリーがありません</option>';
+        area.textContent = "カテゴリーがありません。";
+        return;
+      }
+
+      if ([...select.options].some(option => option.value === previousValue)) {
+        select.value = previousValue;
+      }
+    }
+
+    // カテゴリーを追加
+    async function addCategory() {
+      const input = document.getElementById("newCategoryName");
+      const name = input.value.trim();
+
+      if (!name) {
+        showStatus("categoryStatus", "カテゴリー名を入力してください。", "error");
+        return;
+      }
+
+      const { error } = await supabaseClient
+        .from("categories")
+        .insert([{ name }]);
+
+      if (error) {
+        showStatus(
+          "categoryStatus",
+          error.code === "23505"
+            ? "同じ名前のカテゴリーがすでにあります。"
+            : "追加できませんでした：" + error.message,
+          "error"
+        );
+        return;
+      }
+
+      input.value = "";
+      showStatus("categoryStatus", "カテゴリーを追加しました。", "success");
+      await loadCategories();
+    }
+
+    // 商品が残っているカテゴリーは、SQLの制約により削除できません
+    async function deleteCategory(name) {
+      if (!confirm(`「${name}」カテゴリーを削除しますか？`)) return;
+
+      const { error } = await supabaseClient
+        .from("categories")
+        .delete()
+        .eq("name", name);
+
+      if (error) {
+        showStatus(
+          "categoryStatus",
+          error.code === "23503"
+            ? "このカテゴリーの商品が残っているため削除できません。先に商品を別カテゴリーへ変更するか、削除してください。"
+            : "削除できませんでした：" + error.message,
+          "error"
+        );
+        return;
+      }
+
+      showStatus("categoryStatus", "カテゴリーを削除しました。", "success");
+      await loadCategories();
     }
 
     // 商品一覧
@@ -290,6 +463,11 @@
         corner: document.getElementById("productCorner").value.trim()
       };
 
+      if (!product.category) {
+        showStatus("productStatus", "カテゴリーを選んでください。", "error");
+        return;
+      }
+
       if (!product.product_name) {
         showStatus("productStatus", "商品名を入力してください。", "error");
         return;
@@ -300,12 +478,19 @@
 
       const result = editingProductId === null
         ? await supabaseClient.from("products").insert([product])
-        : await supabaseClient.from("products").update(product).eq("id", editingProductId);
+        : await supabaseClient
+            .from("products")
+            .update(product)
+            .eq("id", editingProductId);
 
       button.disabled = false;
 
       if (result.error) {
-        showStatus("productStatus", "保存に失敗しました：" + result.error.message, "error");
+        showStatus(
+          "productStatus",
+          "保存に失敗しました：" + result.error.message,
+          "error"
+        );
         return;
       }
 
@@ -319,6 +504,86 @@
       await loadProducts();
     }
 
+    // 複数商品を一括登録
+    async function bulkSaveProducts() {
+      const category = document.getElementById("category").value;
+      const input = document.getElementById("bulkProducts").value.trim();
+      const button = document.getElementById("bulkSaveButton");
+
+      if (!category) {
+        showStatus("bulkStatus", "カテゴリーを選んでください。", "error");
+        return;
+      }
+
+      if (!input) {
+        showStatus("bulkStatus", "商品を入力してください。", "error");
+        return;
+      }
+
+      const rows = [];
+      const mistakes = [];
+
+      input.split(/\r?\n/).forEach((line, index) => {
+        if (!line.trim()) return;
+
+        const parts = line.split("|").map(value => value.trim());
+
+        if (parts.length !== 3 || !parts[0]) {
+          mistakes.push(`${index + 1}行目`);
+          return;
+        }
+
+        rows.push({
+          category,
+          product_name: parts[0],
+          price: parts[1],
+          corner: parts[2]
+        });
+      });
+
+      if (mistakes.length > 0) {
+        showStatus(
+          "bulkStatus",
+          mistakes.join("、") +
+            "の入力を確認してください。「商品名 | 価格 | 陳列コーナー」の形式で入力します。",
+          "error"
+        );
+        return;
+      }
+
+      if (rows.length === 0) {
+        showStatus("bulkStatus", "登録する商品がありません。", "error");
+        return;
+      }
+
+      button.disabled = true;
+      showStatus("bulkStatus", "登録中...");
+
+      const { error } = await supabaseClient
+        .from("products")
+        .insert(rows);
+
+      button.disabled = false;
+
+      if (error) {
+        showStatus(
+          "bulkStatus",
+          "一括登録に失敗しました：" + error.message,
+          "error"
+        );
+        return;
+      }
+
+      document.getElementById("bulkProducts").value = "";
+      showStatus(
+        "bulkStatus",
+        `${rows.length}件の商品を登録しました。`,
+        "success"
+      );
+
+      await loadProducts();
+    }
+
     async function deleteProduct(id) {
       if (!confirm("この商品を削除しますか？")) return;
 
@@ -328,7 +593,11 @@
         .eq("id", id);
 
       if (error) {
-        showStatus("productStatus", "削除に失敗しました：" + error.message, "error");
+        showStatus(
+          "productStatus",
+          "削除に失敗しました：" + error.message,
+          "error"
+        );
         return;
       }
 
@@ -338,7 +607,6 @@
 
     function cancelProductEdit() {
       editingProductId = null;
-      document.getElementById("category").value = "肉";
       document.getElementById("productName").value = "";
       document.getElementById("productPrice").value = "";
       document.getElementById("productCorner").value = "";
@@ -377,12 +645,20 @@
         card.appendChild(message);
 
         if (item.link_url) {
-          const link = document.createElement("a");
-          link.href = item.link_url;
-          link.textContent = item.link_text || item.link_url;
-          link.target = "_blank";
-          link.rel = "noopener noreferrer";
-          card.appendChild(link);
+          try {
+            const url = new URL(item.link_url);
+
+            if (url.protocol === "https:" || url.protocol === "http:") {
+              const link = document.createElement("a");
+              link.href = url.href;
+              link.textContent = item.link_text || item.link_url;
+              link.target = "_blank";
+              link.rel = "noopener noreferrer";
+              card.appendChild(link);
+            }
+          } catch {
+            // URLが正しくない場合はリンクを表示しません
+          }
         }
 
         const actions = document.createElement("div");
@@ -391,13 +667,19 @@
         const editButton = document.createElement("button");
         editButton.type = "button";
         editButton.textContent = "編集";
-        editButton.addEventListener("click", () => editAnnouncement(item));
+        editButton.addEventListener(
+          "click",
+          () => editAnnouncement(item)
+        );
 
         const deleteButton = document.createElement("button");
         deleteButton.type = "button";
         deleteButton.className = "delete-button";
         deleteButton.textContent = "削除";
-        deleteButton.addEventListener("click", () => deleteAnnouncement(item.id));
+        deleteButton.addEventListener(
+          "click",
+          () => deleteAnnouncement(item.id)
+        );
 
         actions.append(editButton, deleteButton);
         card.appendChild(actions);
@@ -427,7 +709,11 @@
       }
 
       if (linkUrl && !/^https?:\/\//i.test(linkUrl)) {
-        showStatus("noticeStatus", "リンクURLは http:// または https:// から入力してください。", "error");
+        showStatus(
+          "noticeStatus",
+          "リンクURLは http:// または https:// から入力してください。",
+          "error"
+        );
         return;
       }
 
@@ -441,21 +727,30 @@
       button.disabled = true;
 
       const result = editingAnnouncementId === null
-        ? await supabaseClient.from("announcements").insert([announcement])
-        : await supabaseClient.from("announcements")
+        ? await supabaseClient
+            .from("announcements")
+            .insert([announcement])
+        : await supabaseClient
+            .from("announcements")
             .update(announcement)
             .eq("id", editingAnnouncementId);
 
       button.disabled = false;
 
       if (result.error) {
-        showStatus("noticeStatus", "保存に失敗しました：" + result.error.message, "error");
+        showStatus(
+          "noticeStatus",
+          "保存に失敗しました：" + result.error.message,
+          "error"
+        );
         return;
       }
 
       showStatus(
         "noticeStatus",
-        editingAnnouncementId === null ? "お知らせを登録しました。" : "お知らせを更新しました。",
+        editingAnnouncementId === null
+          ? "お知らせを登録しました。"
+          : "お知らせを更新しました。",
         "success"
       );
 
@@ -472,7 +767,11 @@
         .eq("id", id);
 
       if (error) {
-        showStatus("noticeStatus", "削除に失敗しました：" + error.message, "error");
+        showStatus(
+          "noticeStatus",
+          "削除に失敗しました：" + error.message,
+          "error"
+        );
         return;
       }
 
