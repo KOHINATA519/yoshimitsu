@@ -10,11 +10,13 @@
     a { font-size: 1.1em; }
     button { font-size: 20px; margin: 5px; padding: 6px 10px; cursor: pointer; }
     .updated-date { color: #666; font-size: 18px; }
+    .store-name { color: #444; font-weight: bold; margin-bottom: 0; }
     .card { border: 1px solid #ccc; padding: 12px; margin: 12px 0; overflow-wrap: anywhere; }
     .error { color: #b00020; }
   </style>
 </head>
 <body>
+  <p id="storeName" class="store-name" aria-live="polite"></p>
   <h1 id="pageTitle">商品一覧</h1>
   <p><a id="backLink" href="index.html">トップページへ戻る</a></p>
   <button type="button" onclick="document.body.style.fontSize='30px'">文字を大きくする</button>
@@ -55,6 +57,7 @@
       }
 
       const store = storeResult.data;
+      document.getElementById("storeName").textContent = store.name;
       title.textContent = category === "新商品"
         ? "新商品情報"
         : category + (category === "その他特売" ? "" : "の特売品コーナー");
