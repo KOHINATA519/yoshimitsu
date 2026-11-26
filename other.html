@@ -17,14 +17,15 @@
       font-family: Arial, sans-serif;
     }
 
+    .updated-date {
+      color: #666;
+      font-size: 18px;
+    }
+
     .card {
       border: 1px solid #ccc;
       padding: 12px;
       margin: 12px 0;
-    }
-
-    .error {
-      color: red;
     }
   </style>
 </head>
@@ -33,6 +34,7 @@
   <h1>その他特売</h1>
   <p><a href="index.html">トップページへ戻る</a></p>
 
+  <p id="lastUpdated" class="updated-date">最終更新日を確認しています...</p>
   <div id="products">商品を読み込んでいます...</div>
 
   <script>
@@ -42,25 +44,39 @@
 
     async function loadProducts() {
       const area = document.getElementById("products");
+      const updatedArea = document.getElementById("lastUpdated");
 
       const { data, error } = await supabaseClient
         .from("products")
-        .select("product_name, price, corner")
+        .select("product_name, price, corner, updated_at")
         .eq("category", "その他特売")
-        .order("id", { ascending: false });
+        .order("updated_at", { ascending: false });
 
       if (error) {
         area.textContent = "商品を読み込めませんでした。";
-        console.error(error.message);
+        updatedArea.textContent = "";
+        console.error("商品読込エラー:", error.message);
         return;
       }
 
-      area.replaceChildren();
-
       if (!data || data.length === 0) {
+        updatedArea.textContent = "最終更新日：まだ商品がありません";
         area.textContent = "現在、その他特売の商品はありません。";
         return;
       }
+
+      const latestDate = new Date(data[0].updated_at);
+
+      updatedArea.textContent =
+        "最終更新日：" +
+        new Intl.DateTimeFormat("ja-JP", {
+          timeZone: "Asia/Tokyo",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit"
+        }).format(latestDate);
+
+      area.replaceChildren();
 
       for (const item of data) {
         const card = document.createElement("div");
