@@ -107,7 +107,7 @@
     }
 
     async function callHQ(action, data) {
-      const result = await client.functions.invoke("hq-admin", {
+      const result = await client.functions.invoke("clever-endpoint", {
         body: Object.assign({ action: action }, data || {})
       });
       if (result.error) throw result.error;
