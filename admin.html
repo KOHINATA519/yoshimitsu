@@ -3,306 +3,214 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>管理者ページ｜スーパー吉光</title>
+  <title>店舗管理</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
   <style>
-    body {
-      max-width: 900px;
-      margin: auto;
-      padding: 20px;
-      font-size: 20px;
-      line-height: 1.7;
-      font-family: Arial, sans-serif;
-    }
-
-    input, select, button, textarea {
-      box-sizing: border-box;
-      width: 100%;
-      margin: 6px 0 12px;
-      padding: 10px;
-      font-size: 20px;
-    }
-
-    textarea {
-      min-height: 180px;
-      line-height: 1.6;
-    }
-
+    body { max-width: 900px; margin: auto; padding: 20px; font-size: 20px; line-height: 1.7; font-family: Arial, sans-serif; }
+    input, select, button, textarea { box-sizing: border-box; width: 100%; margin: 6px 0 12px; padding: 10px; font-size: 20px; }
+    textarea { min-height: 160px; line-height: 1.6; }
     button { cursor: pointer; }
-    button:disabled { cursor: wait; opacity: 0.6; }
-
-    .card {
-      border: 1px solid #ccc;
-      padding: 12px;
-      margin: 12px 0;
-      overflow-wrap: anywhere;
-    }
-
-    .actions {
-      display: flex;
-      gap: 8px;
-    }
-
+    button:disabled { opacity: .6; cursor: wait; }
+    .card { border: 1px solid #ccc; padding: 12px; margin: 12px 0; overflow-wrap: anywhere; }
+    .actions { display: flex; gap: 8px; }
     .actions button { width: 50%; }
     .delete-button { color: #a00; background: #fff0f0; }
     .error { color: #b00020; }
     .success { color: green; }
     [hidden] { display: none !important; }
-
-    @media (max-width: 500px) {
-      body { padding: 12px; font-size: 18px; }
-      input, select, button, textarea { font-size: 18px; }
-    }
+    @media (max-width: 500px) { body { padding: 12px; font-size: 18px; } input, select, button, textarea { font-size: 18px; } }
   </style>
 </head>
-
 <body>
-  <h1>スーパー吉光 管理者ページ</h1>
+  <h1 id="pageHeading">店舗管理</h1>
 
   <section id="loginPanel">
     <h2>管理者ログイン</h2>
-
     <label for="loginEmail">メールアドレス</label>
-    <input id="loginEmail" type="email" autocomplete="username" required>
-
+    <input id="loginEmail" type="email" autocomplete="username">
     <label for="loginPassword">パスワード</label>
-    <input id="loginPassword" type="password" autocomplete="current-password" required>
-
+    <input id="loginPassword" type="password" autocomplete="current-password">
     <button id="loginButton" type="button" onclick="login()">ログイン</button>
     <p id="loginStatus" aria-live="polite"></p>
   </section>
 
   <main id="adminPanel" hidden>
     <p id="signedInAs"></p>
+    <p id="storeLabel"></p>
+    <p><a id="publicSiteLink" href="#">店舗サイトを開く</a></p>
+    <p><a id="hqLink" href="hq.html" hidden>本部管理へ</a></p>
     <button type="button" onclick="logout()">ログアウト</button>
 
     <hr>
     <h2>カテゴリー管理</h2>
-
     <label for="newCategoryName">新しいカテゴリー名</label>
     <input id="newCategoryName" placeholder="例：お菓子">
-
     <button type="button" onclick="addCategory()">カテゴリーを追加</button>
     <p id="categoryStatus" aria-live="polite"></p>
-
-    <h3>カテゴリー一覧</h3>
-    <div id="categoryList" aria-live="polite">読込中...</div>
+    <div id="categoryList" aria-live="polite"></div>
 
     <hr>
     <h2>商品登録・編集</h2>
-
     <label for="category">カテゴリー</label>
-    <select id="category">
-      <option value="">カテゴリーを読み込み中...</option>
-    </select>
-
+    <select id="category"></select>
     <label for="productName">商品名</label>
     <input id="productName">
-
     <label for="productPrice">価格</label>
     <input id="productPrice" placeholder="例：88円">
-
     <label for="productCorner">陳列コーナー</label>
     <input id="productCorner" placeholder="例：精肉売場">
-
-    <button id="productSaveButton" type="button" onclick="saveProduct()">
-      商品を登録
-    </button>
-
-    <button
-      id="productCancelButton"
-      type="button"
-      onclick="cancelProductEdit()"
-      hidden
-    >
-      編集をキャンセル
-    </button>
-
+    <button id="productSaveButton" type="button" onclick="saveProduct()">商品を登録</button>
+    <button id="productCancelButton" type="button" onclick="cancelProductEdit()" hidden>編集をキャンセル</button>
     <p id="productStatus" aria-live="polite"></p>
 
     <h3>商品をまとめて登録</h3>
-    <p>
-      上のカテゴリーを選んで、1行に1商品ずつ入力してください。<br>
-      入力形式：商品名 | 価格 | 陳列コーナー
-    </p>
-
-    <textarea
-      id="bulkProducts"
-      aria-label="まとめて登録する商品"
-      placeholder="豚こま切れ | 88円 | 精肉売場&#10;牛切り落とし | 198円 | 精肉売場"
-    ></textarea>
-
-    <button
-      id="bulkSaveButton"
-      type="button"
-      onclick="bulkSaveProducts()"
-    >
-      まとめて登録
-    </button>
-
+    <p>上のカテゴリーを選び、1行に1商品ずつ入力します。形式：商品名 | 価格 | 陳列コーナー</p>
+    <textarea id="bulkProducts" placeholder="豚こま切れ | 88円 | 精肉売場&#10;牛切り落とし | 198円 | 精肉売場"></textarea>
+    <button id="bulkSaveButton" type="button" onclick="bulkSaveProducts()">まとめて登録</button>
     <p id="bulkStatus" aria-live="polite"></p>
-
     <h3>登録済み商品</h3>
     <div id="productList" aria-live="polite"></div>
 
     <hr>
     <h2>お知らせ登録・編集</h2>
-
     <label for="noticeMessage">お知らせ文</label>
-    <input
-      id="noticeMessage"
-      placeholder="例：本日の特売情報を更新しました"
-    >
-
+    <input id="noticeMessage" placeholder="例：本日の特売情報を更新しました">
     <label for="noticeLinkText">リンク文字（省略可）</label>
     <input id="noticeLinkText" placeholder="例：公式Instagram">
-
     <label for="noticeLinkUrl">リンク先URL（省略可）</label>
-    <input
-      id="noticeLinkUrl"
-      type="url"
-      placeholder="https://example.com"
-    >
-
-    <button id="noticeSaveButton" type="button" onclick="saveAnnouncement()">
-      お知らせを登録
-    </button>
-
-    <button
-      id="noticeCancelButton"
-      type="button"
-      onclick="cancelAnnouncementEdit()"
-      hidden
-    >
-      編集をキャンセル
-    </button>
-
+    <input id="noticeLinkUrl" type="url" placeholder="https://example.com">
+    <button id="noticeSaveButton" type="button" onclick="saveAnnouncement()">お知らせを登録</button>
+    <button id="noticeCancelButton" type="button" onclick="cancelAnnouncementEdit()" hidden>編集をキャンセル</button>
     <p id="noticeStatus" aria-live="polite"></p>
-
     <h3>登録済みお知らせ</h3>
     <div id="announcementList" aria-live="polite"></div>
   </main>
 
   <script>
     const SUPABASE_URL = "https://llxysqzozhnikuznsuwy.supabase.co";
-    const SUPABASE_PUBLISHABLE_KEY =
-      "sb_publishable_uv_8zUNxYc1tebjvnukzdg_nNF6kAip";
-
-    const supabaseClient = supabase.createClient(
-      SUPABASE_URL,
-      SUPABASE_PUBLISHABLE_KEY
-    );
-
+    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_uv_8zUNxYc1tebjvnukzdg_nNF6kAip";
+    const client = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+    const storeSlug = new URLSearchParams(location.search).get("store");
+    let store = null;
     let editingProductId = null;
     let editingAnnouncementId = null;
     let loadedUserId = null;
 
-    function showStatus(id, message, type = "") {
-      const element = document.getElementById(id);
-      element.textContent = message;
-      element.className = type;
+    function status(id, message, type) {
+      const el = document.getElementById(id);
+      el.textContent = message;
+      el.className = type || "";
     }
 
     async function login() {
       const button = document.getElementById("loginButton");
-      const email = document.getElementById("loginEmail").value.trim();
-      const password = document.getElementById("loginPassword").value;
-
       button.disabled = true;
-      showStatus("loginStatus", "ログイン中...");
-
-      const { error } = await supabaseClient.auth.signInWithPassword({
-        email,
-        password
+      status("loginStatus", "ログイン中...");
+      const result = await client.auth.signInWithPassword({
+        email: document.getElementById("loginEmail").value.trim(),
+        password: document.getElementById("loginPassword").value
       });
-
       button.disabled = false;
-
-      if (error) {
-        showStatus(
-          "loginStatus",
-          "ログインできませんでした。メールアドレスとパスワードを確認してください。",
-          "error"
-        );
-        console.error(error.message);
+      if (result.error) {
+        status("loginStatus", "ログインできませんでした。入力内容を確認してください。", "error");
         return;
       }
-
       document.getElementById("loginPassword").value = "";
-      showStatus("loginStatus", "ログインしました。", "success");
       await checkSession();
     }
 
     async function logout() {
-      const { error } = await supabaseClient.auth.signOut();
-
-      if (error) {
-        alert("ログアウトできませんでした：" + error.message);
+      const result = await client.auth.signOut();
+      if (result.error) {
+        status("loginStatus", "ログアウトできませんでした：" + result.error.message, "error");
         return;
       }
-
       loadedUserId = null;
       await checkSession();
     }
 
     async function checkSession() {
-      const { data, error } = await supabaseClient.auth.getSession();
-
+      const { data, error } = await client.auth.getSession();
       if (error) {
-        showStatus("loginStatus", "ログイン状態を確認できませんでした。", "error");
+        status("loginStatus", "ログイン状態を確認できませんでした。", "error");
         return;
       }
-
       const session = data.session;
-      document.getElementById("loginPanel").hidden = Boolean(session);
-      document.getElementById("adminPanel").hidden = !session;
-
       if (!session) {
-        document.getElementById("signedInAs").textContent = "";
+        document.getElementById("loginPanel").hidden = false;
+        document.getElementById("adminPanel").hidden = true;
         return;
       }
 
-      document.getElementById("signedInAs").textContent =
-        "ログイン中：" + (session.user.email || "");
+      const storeResult = await client.from("stores")
+        .select("id, name, slug, is_active")
+        .eq("slug", storeSlug || "")
+        .maybeSingle();
 
-      if (loadedUserId !== session.user.id) {
+      if (storeResult.error || !storeResult.data || !storeResult.data.is_active) {
+        document.getElementById("loginPanel").hidden = false;
+        document.getElementById("adminPanel").hidden = true;
+        status("loginStatus", "店舗が見つからないか、停止中です。", "error");
+        return;
+      }
+      store = storeResult.data;
+
+      const memberResult = await client.from("store_memberships")
+        .select("role")
+        .eq("store_id", store.id)
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+
+      const hqResult = await client.rpc("is_hq_admin");
+      const isHq = !hqResult.error && hqResult.data === true;
+
+      if ((!memberResult.data || memberResult.error) && !isHq) {
+        document.getElementById("loginPanel").hidden = false;
+        document.getElementById("adminPanel").hidden = true;
+        status("loginStatus", "この店舗の管理権限がありません。", "error");
+        return;
+      }
+
+      document.getElementById("loginPanel").hidden = true;
+      document.getElementById("adminPanel").hidden = false;
+      document.getElementById("pageHeading").textContent = store.name + " 管理ページ";
+      document.getElementById("storeLabel").textContent = "管理対象：" + store.name;
+      document.getElementById("signedInAs").textContent = "ログイン中：" + (session.user.email || "");
+      document.getElementById("hqLink").hidden = !isHq;
+      const publicUrl = new URL("index.html", location.href);
+      publicUrl.searchParams.set("store", store.slug);
+      document.getElementById("publicSiteLink").href = publicUrl.href;
+
+      if (loadedUserId !== session.user.id || !window.storeDataLoaded) {
         loadedUserId = session.user.id;
+        window.storeDataLoaded = true;
         await loadAll();
       }
     }
 
-    supabaseClient.auth.onAuthStateChange(() => {
+    client.auth.onAuthStateChange(function() {
       setTimeout(checkSession, 0);
     });
 
     async function loadAll() {
-      await Promise.all([
-        loadCategories(),
-        loadProducts(),
-        loadAnnouncements()
-      ]);
+      await Promise.all([loadCategories(), loadProducts(), loadAnnouncements()]);
     }
 
-    // カテゴリー一覧と商品登録欄を更新
     async function loadCategories() {
       const select = document.getElementById("category");
-      const area = document.getElementById("categoryList");
-      const previousValue = select.value;
-
-      const { data, error } = await supabaseClient
-        .from("categories")
+      const list = document.getElementById("categoryList");
+      const oldValue = select.value;
+      const { data, error } = await client.from("categories")
         .select("name")
+        .eq("store_id", store.id)
         .order("created_at", { ascending: true });
 
       if (error) {
-        select.innerHTML = '<option value="">読込失敗</option>';
-        area.textContent = "カテゴリーを読み込めませんでした：" + error.message;
+        list.textContent = "カテゴリー読込失敗：" + error.message;
         return;
       }
-
       select.replaceChildren();
-      area.replaceChildren();
+      list.replaceChildren();
 
       for (const item of data || []) {
         const option = document.createElement("option");
@@ -312,133 +220,82 @@
 
         const row = document.createElement("p");
         row.append(document.createTextNode(item.name + " "));
-
-        const deleteButton = document.createElement("button");
-        deleteButton.type = "button";
-        deleteButton.textContent = "削除";
-        deleteButton.addEventListener(
-          "click",
-          () => deleteCategory(item.name)
-        );
-
-        row.appendChild(deleteButton);
-        area.appendChild(row);
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = "削除";
+        button.addEventListener("click", function() { deleteCategory(item.name); });
+        row.appendChild(button);
+        list.appendChild(row);
       }
 
-      if (!data || data.length === 0) {
+      if (!data || !data.length) {
         select.innerHTML = '<option value="">カテゴリーがありません</option>';
-        area.textContent = "カテゴリーがありません。";
-        return;
-      }
-
-      if ([...select.options].some(option => option.value === previousValue)) {
-        select.value = previousValue;
+        list.textContent = "カテゴリーがありません。";
+      } else if ([...select.options].some(function(option) { return option.value === oldValue; })) {
+        select.value = oldValue;
       }
     }
 
-    // カテゴリーを追加
     async function addCategory() {
-      const input = document.getElementById("newCategoryName");
-      const name = input.value.trim();
-
+      const name = document.getElementById("newCategoryName").value.trim();
       if (!name) {
-        showStatus("categoryStatus", "カテゴリー名を入力してください。", "error");
+        status("categoryStatus", "カテゴリー名を入力してください。", "error");
         return;
       }
-
-      const { error } = await supabaseClient
-        .from("categories")
-        .insert([{ name }]);
-
+      const { error } = await client.from("categories").insert([{ store_id: store.id, name: name }]);
       if (error) {
-        showStatus(
-          "categoryStatus",
-          error.code === "23505"
-            ? "同じ名前のカテゴリーがすでにあります。"
-            : "追加できませんでした：" + error.message,
-          "error"
-        );
+        status("categoryStatus", error.code === "23505" ? "同じカテゴリーがすでにあります。" : "追加失敗：" + error.message, "error");
         return;
       }
-
-      input.value = "";
-      showStatus("categoryStatus", "カテゴリーを追加しました。", "success");
+      document.getElementById("newCategoryName").value = "";
+      status("categoryStatus", "カテゴリーを追加しました。", "success");
       await loadCategories();
     }
 
-    // 商品が残っているカテゴリーは、SQLの制約により削除できません
     async function deleteCategory(name) {
-      if (!confirm(`「${name}」カテゴリーを削除しますか？`)) return;
-
-      const { error } = await supabaseClient
-        .from("categories")
-        .delete()
-        .eq("name", name);
-
+      if (!confirm("「" + name + "」を削除しますか？商品が残っている場合は削除できません。")) return;
+      const { error } = await client.from("categories")
+        .delete().eq("store_id", store.id).eq("name", name);
       if (error) {
-        showStatus(
-          "categoryStatus",
-          error.code === "23503"
-            ? "このカテゴリーの商品が残っているため削除できません。先に商品を別カテゴリーへ変更するか、削除してください。"
-            : "削除できませんでした：" + error.message,
-          "error"
-        );
+        status("categoryStatus", error.code === "23503"
+          ? "商品が残っているため削除できません。商品を別カテゴリーへ移すか削除してください。"
+          : "削除失敗：" + error.message, "error");
         return;
       }
-
-      showStatus("categoryStatus", "カテゴリーを削除しました。", "success");
+      status("categoryStatus", "カテゴリーを削除しました。", "success");
       await loadCategories();
     }
 
-    // 商品一覧
     async function loadProducts() {
       const area = document.getElementById("productList");
       area.textContent = "読込中...";
-
-      const { data, error } = await supabaseClient
-        .from("products")
+      const { data, error } = await client.from("products")
         .select("id, category, product_name, price, corner, updated_at")
-        .order("id", { ascending: false });
-
+        .eq("store_id", store.id).order("id", { ascending: false });
       if (error) {
         area.textContent = "商品を読み込めませんでした：" + error.message;
         return;
       }
-
       area.replaceChildren();
-
-      if (!data || data.length === 0) {
+      if (!data || !data.length) {
         area.textContent = "商品はありません。";
         return;
       }
-
       for (const item of data) {
         const card = document.createElement("section");
         card.className = "card";
-
         const details = document.createElement("p");
-        details.textContent =
-          item.category + "：" + item.product_name +
-          "／価格：" + item.price +
-          "／陳列コーナー：" + item.corner;
-        card.appendChild(details);
-
+        details.textContent = item.category + "：" + item.product_name + "／価格：" + item.price + "／陳列コーナー：" + item.corner;
         const actions = document.createElement("div");
         actions.className = "actions";
-
-        const editButton = document.createElement("button");
-        editButton.type = "button";
-        editButton.textContent = "編集";
-        editButton.addEventListener("click", () => editProduct(item));
-
-        const deleteButton = document.createElement("button");
-        deleteButton.type = "button";
-        deleteButton.className = "delete-button";
-        deleteButton.textContent = "削除";
-        deleteButton.addEventListener("click", () => deleteProduct(item.id));
-
-        actions.append(editButton, deleteButton);
-        card.appendChild(actions);
+        const edit = document.createElement("button");
+        edit.type = "button"; edit.textContent = "編集";
+        edit.addEventListener("click", function() { editProduct(item); });
+        const del = document.createElement("button");
+        del.type = "button"; del.className = "delete-button"; del.textContent = "削除";
+        del.addEventListener("click", function() { deleteProduct(item.id); });
+        actions.append(edit, del);
+        card.append(details, actions);
         area.appendChild(card);
       }
     }
@@ -451,157 +308,90 @@
       document.getElementById("productCorner").value = item.corner || "";
       document.getElementById("productSaveButton").textContent = "変更を保存";
       document.getElementById("productCancelButton").hidden = false;
-      showStatus("productStatus", "商品を編集中です。");
+      status("productStatus", "商品を編集中です。");
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
     async function saveProduct() {
       const product = {
+        store_id: store.id,
         category: document.getElementById("category").value,
         product_name: document.getElementById("productName").value.trim(),
         price: document.getElementById("productPrice").value.trim(),
         corner: document.getElementById("productCorner").value.trim()
       };
-
-      if (!product.category) {
-        showStatus("productStatus", "カテゴリーを選んでください。", "error");
+      if (!product.category || !product.product_name) {
+        status("productStatus", "カテゴリーと商品名を入力してください。", "error");
         return;
       }
-
-      if (!product.product_name) {
-        showStatus("productStatus", "商品名を入力してください。", "error");
-        return;
-      }
-
       const button = document.getElementById("productSaveButton");
       button.disabled = true;
-
-      const result = editingProductId === null
-        ? await supabaseClient.from("products").insert([product])
-        : await supabaseClient
-            .from("products")
-            .update(product)
-            .eq("id", editingProductId);
-
+      let result;
+      if (editingProductId === null) {
+        result = await client.from("products").insert([product]);
+      } else {
+        delete product.store_id;
+        result = await client.from("products").update(product)
+          .eq("id", editingProductId).eq("store_id", store.id);
+      }
       button.disabled = false;
-
       if (result.error) {
-        showStatus(
-          "productStatus",
-          "保存に失敗しました：" + result.error.message,
-          "error"
-        );
+        status("productStatus", "保存失敗：" + result.error.message, "error");
         return;
       }
-
-      showStatus(
-        "productStatus",
-        editingProductId === null ? "商品を登録しました。" : "商品を更新しました。",
-        "success"
-      );
-
+      status("productStatus", editingProductId === null ? "商品を登録しました。" : "商品を更新しました。", "success");
       cancelProductEdit();
       await loadProducts();
     }
 
-    // 複数商品を一括登録
     async function bulkSaveProducts() {
       const category = document.getElementById("category").value;
       const input = document.getElementById("bulkProducts").value.trim();
       const button = document.getElementById("bulkSaveButton");
-
-      if (!category) {
-        showStatus("bulkStatus", "カテゴリーを選んでください。", "error");
+      if (!category || !input) {
+        status("bulkStatus", "カテゴリーを選び、商品を入力してください。", "error");
         return;
       }
-
-      if (!input) {
-        showStatus("bulkStatus", "商品を入力してください。", "error");
-        return;
-      }
-
       const rows = [];
-      const mistakes = [];
-
-      input.split(/\r?\n/).forEach((line, index) => {
+      const errors = [];
+      input.split(/\r?\n/).forEach(function(line, index) {
         if (!line.trim()) return;
-
-        const parts = line.split("|").map(value => value.trim());
-
+        const parts = line.split("|").map(function(part) { return part.trim(); });
         if (parts.length !== 3 || !parts[0]) {
-          mistakes.push(`${index + 1}行目`);
-          return;
+          errors.push((index + 1) + "行目");
+        } else {
+          rows.push({
+            store_id: store.id, category: category, product_name: parts[0],
+            price: parts[1], corner: parts[2]
+          });
         }
-
-        rows.push({
-          category,
-          product_name: parts[0],
-          price: parts[1],
-          corner: parts[2]
-        });
       });
-
-      if (mistakes.length > 0) {
-        showStatus(
-          "bulkStatus",
-          mistakes.join("、") +
-            "の入力を確認してください。「商品名 | 価格 | 陳列コーナー」の形式で入力します。",
-          "error"
-        );
+      if (errors.length) {
+        status("bulkStatus", errors.join("、") + "を確認してください。形式：商品名 | 価格 | 陳列コーナー", "error");
         return;
       }
-
-      if (rows.length === 0) {
-        showStatus("bulkStatus", "登録する商品がありません。", "error");
-        return;
-      }
-
       button.disabled = true;
-      showStatus("bulkStatus", "登録中...");
-
-      const { error } = await supabaseClient
-        .from("products")
-        .insert(rows);
-
+      status("bulkStatus", "登録中...");
+      const { error } = await client.from("products").insert(rows);
       button.disabled = false;
-
       if (error) {
-        showStatus(
-          "bulkStatus",
-          "一括登録に失敗しました：" + error.message,
-          "error"
-        );
+        status("bulkStatus", "一括登録失敗：" + error.message, "error");
         return;
       }
-
       document.getElementById("bulkProducts").value = "";
-      showStatus(
-        "bulkStatus",
-        `${rows.length}件の商品を登録しました。`,
-        "success"
-      );
-
+      status("bulkStatus", rows.length + "件を登録しました。", "success");
       await loadProducts();
     }
 
     async function deleteProduct(id) {
       if (!confirm("この商品を削除しますか？")) return;
-
-      const { error } = await supabaseClient
-        .from("products")
-        .delete()
-        .eq("id", id);
-
+      const { error } = await client.from("products").delete()
+        .eq("id", id).eq("store_id", store.id);
       if (error) {
-        showStatus(
-          "productStatus",
-          "削除に失敗しました：" + error.message,
-          "error"
-        );
+        status("productStatus", "削除失敗：" + error.message, "error");
         return;
       }
-
-      showStatus("productStatus", "商品を削除しました。", "success");
+      status("productStatus", "商品を削除しました。", "success");
       await loadProducts();
     }
 
@@ -614,76 +404,47 @@
       document.getElementById("productCancelButton").hidden = true;
     }
 
-    // お知らせ一覧
     async function loadAnnouncements() {
       const area = document.getElementById("announcementList");
       area.textContent = "読込中...";
-
-      const { data, error } = await supabaseClient
-        .from("announcements")
+      const { data, error } = await client.from("announcements")
         .select("id, message, link_text, link_url, created_at")
-        .order("created_at", { ascending: false });
-
+        .eq("store_id", store.id).order("created_at", { ascending: false });
       if (error) {
-        area.textContent = "お知らせを読み込めませんでした：" + error.message;
+        area.textContent = "お知らせ読込失敗：" + error.message;
         return;
       }
-
       area.replaceChildren();
-
-      if (!data || data.length === 0) {
+      if (!data || !data.length) {
         area.textContent = "お知らせはありません。";
         return;
       }
-
       for (const item of data) {
         const card = document.createElement("section");
         card.className = "card";
-
         const message = document.createElement("p");
         message.textContent = item.message || "";
         card.appendChild(message);
-
         if (item.link_url) {
           try {
             const url = new URL(item.link_url);
-
             if (url.protocol === "https:" || url.protocol === "http:") {
               const link = document.createElement("a");
-              link.href = url.href;
-              link.textContent = item.link_text || item.link_url;
-              link.target = "_blank";
-              link.rel = "noopener noreferrer";
+              link.href = url.href; link.textContent = item.link_text || item.link_url;
+              link.target = "_blank"; link.rel = "noopener noreferrer";
               card.appendChild(link);
             }
-          } catch {
-            // URLが正しくない場合はリンクを表示しません
-          }
+          } catch {}
         }
-
         const actions = document.createElement("div");
         actions.className = "actions";
-
-        const editButton = document.createElement("button");
-        editButton.type = "button";
-        editButton.textContent = "編集";
-        editButton.addEventListener(
-          "click",
-          () => editAnnouncement(item)
-        );
-
-        const deleteButton = document.createElement("button");
-        deleteButton.type = "button";
-        deleteButton.className = "delete-button";
-        deleteButton.textContent = "削除";
-        deleteButton.addEventListener(
-          "click",
-          () => deleteAnnouncement(item.id)
-        );
-
-        actions.append(editButton, deleteButton);
-        card.appendChild(actions);
-        area.appendChild(card);
+        const edit = document.createElement("button");
+        edit.type = "button"; edit.textContent = "編集";
+        edit.addEventListener("click", function() { editAnnouncement(item); });
+        const del = document.createElement("button");
+        del.type = "button"; del.className = "delete-button"; del.textContent = "削除";
+        del.addEventListener("click", function() { deleteAnnouncement(item.id); });
+        actions.append(edit, del); card.appendChild(actions); area.appendChild(card);
       }
     }
 
@@ -694,7 +455,7 @@
       document.getElementById("noticeLinkUrl").value = item.link_url || "";
       document.getElementById("noticeSaveButton").textContent = "変更を保存";
       document.getElementById("noticeCancelButton").hidden = false;
-      showStatus("noticeStatus", "お知らせを編集中です。");
+      status("noticeStatus", "お知らせを編集中です。");
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
@@ -702,80 +463,44 @@
       const message = document.getElementById("noticeMessage").value.trim();
       const linkText = document.getElementById("noticeLinkText").value.trim();
       const linkUrl = document.getElementById("noticeLinkUrl").value.trim();
-
       if (!message) {
-        showStatus("noticeStatus", "お知らせ文を入力してください。", "error");
+        status("noticeStatus", "お知らせ文を入力してください。", "error");
         return;
       }
-
       if (linkUrl && !/^https?:\/\//i.test(linkUrl)) {
-        showStatus(
-          "noticeStatus",
-          "リンクURLは http:// または https:// から入力してください。",
-          "error"
-        );
+        status("noticeStatus", "リンクURLはhttp://またはhttps://で始めてください。", "error");
         return;
       }
-
-      const announcement = {
-        message,
-        link_text: linkText || null,
-        link_url: linkUrl || null
-      };
-
+      const record = { store_id: store.id, message: message, link_text: linkText || null, link_url: linkUrl || null };
       const button = document.getElementById("noticeSaveButton");
       button.disabled = true;
-
-      const result = editingAnnouncementId === null
-        ? await supabaseClient
-            .from("announcements")
-            .insert([announcement])
-        : await supabaseClient
-            .from("announcements")
-            .update(announcement)
-            .eq("id", editingAnnouncementId);
-
+      let result;
+      if (editingAnnouncementId === null) {
+        result = await client.from("announcements").insert([record]);
+      } else {
+        delete record.store_id;
+        result = await client.from("announcements").update(record)
+          .eq("id", editingAnnouncementId).eq("store_id", store.id);
+      }
       button.disabled = false;
-
       if (result.error) {
-        showStatus(
-          "noticeStatus",
-          "保存に失敗しました：" + result.error.message,
-          "error"
-        );
+        status("noticeStatus", "保存失敗：" + result.error.message, "error");
         return;
       }
-
-      showStatus(
-        "noticeStatus",
-        editingAnnouncementId === null
-          ? "お知らせを登録しました。"
-          : "お知らせを更新しました。",
-        "success"
-      );
-
+      status("noticeStatus", editingAnnouncementId === null ? "お知らせを登録しました。" : "お知らせを更新しました。", "success");
       cancelAnnouncementEdit();
       await loadAnnouncements();
     }
 
     async function deleteAnnouncement(id) {
       if (!confirm("このお知らせを削除しますか？")) return;
-
-      const { error } = await supabaseClient
-        .from("announcements")
-        .delete()
-        .eq("id", id);
-
+      const { error } = await client.from("announcements").delete()
+        .eq("id", id).eq("store_id", store.id);
       if (error) {
-        showStatus(
-          "noticeStatus",
-          "削除に失敗しました：" + error.message,
-          "error"
-        );
+        status("noticeStatus", "削除失敗：" + error.message, "error");
         return;
       }
-
-      showStatus("noticeStatus", "お知らせを削除しました。", "success");
+      status("noticeStatus", "お知らせを削除しました。", "success");
       await loadAnnouncements();
     }
 
