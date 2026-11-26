@@ -84,6 +84,25 @@
 </head>
 
 <body>
+  <script>
+
+const PASSWORD = "Yoshimitsu2026";
+
+const password =
+prompt("管理者パスワードを入力してください");
+
+if(password !== PASSWORD){
+
+document.body.innerHTML = `
+<h1>アクセス拒否</h1>
+<p>管理者のみ利用できます。</p>
+`;
+
+throw new Error("Unauthorized");
+
+}
+
+</script>
   <h1>スーパー吉光 チラシ商品登録</h1>
 
   <p>カテゴリー</p>
