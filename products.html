@@ -60,7 +60,9 @@
       document.getElementById("storeName").textContent = store.name;
       title.textContent = category === "新商品"
         ? "新商品情報"
-        : category + (category === "その他特売" ? "" : "の特売品コーナー");
+        : (category.endsWith("コーナー特売") || category === "その他特売")
+          ? category
+          : category + "の特売品コーナー";
       document.title = title.textContent + "｜" + store.name;
 
       const categoryResult = await client.from("categories")
