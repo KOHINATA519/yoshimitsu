@@ -39,6 +39,8 @@
     <h2>店舗を追加</h2>
     <label for="storeName">店舗名</label>
     <input id="storeName" placeholder="例：スーパー吉光 川越店">
+    <label for="storeAddress">住所（任意）</label>
+    <input id="storeAddress" placeholder="例：埼玉県川越市〇〇 1-2-3">
     <label for="storeSlug">URL用の店舗ID（英小文字・数字・ハイフン）</label>
     <input id="storeSlug" placeholder="例：kawagoe">
     <button id="createStoreButton" type="button" onclick="createStore()">店舗を作成</button>
@@ -134,6 +136,7 @@
 
     async function createStore() {
       const name = document.getElementById("storeName").value.trim();
+      const address = document.getElementById("storeAddress").value.trim();
       const slug = document.getElementById("storeSlug").value.trim().toLowerCase();
       if (!name || !/^[a-z0-9-]{2,40}$/.test(slug)) {
         setStatus("storeStatus", "店舗名と、英小文字・数字・ハイフン2〜40文字の店舗IDを入力してください。", "error");
@@ -142,8 +145,9 @@
       const button = document.getElementById("createStoreButton");
       button.disabled = true;
       try {
-        await callHQ("create_store", { name: name, slug: slug });
+        await callHQ("create_store", { name: name, address: address, slug: slug });
         document.getElementById("storeName").value = "";
+        document.getElementById("storeAddress").value = "";
         document.getElementById("storeSlug").value = "";
         setStatus("storeStatus", "店舗を作成しました。店舗管理者を招待できます。", "success");
         await loadStores(slug);
@@ -171,6 +175,11 @@
           const status = document.createElement("p");
           status.textContent = store.is_active ? "公開中" : "停止中";
           card.appendChild(status);
+          if (store.address) {
+            const addressText = document.createElement("p");
+            addressText.textContent = "住所：" + store.address;
+            card.appendChild(addressText);
+          }
 
           const siteLink = document.createElement("a");
           siteLink.href = "index.html?store=" + encodeURIComponent(store.slug);
@@ -205,6 +214,11 @@
           editName.setAttribute("aria-label", "店舗名");
           editName.placeholder = "店舗名";
           edit.appendChild(editName);
+          const editAddress = document.createElement("input");
+          editAddress.value = store.address || "";
+          editAddress.setAttribute("aria-label", "住所");
+          editAddress.placeholder = "住所（任意）";
+          edit.appendChild(editAddress);
           const editSlug = document.createElement("input");
           editSlug.value = store.slug;
           editSlug.setAttribute("aria-label", "URL用の店舗ID");
@@ -216,7 +230,7 @@
           saveEdit.addEventListener("click", async function() {
             saveEdit.disabled = true;
             try {
-              await callHQ("update_store", { store_id: store.id, name: editName.value.trim(), slug: editSlug.value.trim().toLowerCase() });
+              await callHQ("update_store", { store_id: store.id, name: editName.value.trim(), address: editAddress.value.trim(), slug: editSlug.value.trim().toLowerCase() });
               alert("店舗情報を更新しました。URL用IDを変えた場合、店舗サイトのURLも変わります。");
               await loadStores();
             } catch (e) { alert("更新できませんでした：" + e.message); }
@@ -337,5 +351,7 @@
     client.auth.onAuthStateChange(function() { setTimeout(checkSession, 0); });
     checkSession();
   </script>
+</body>
+</html>
 </body>
 </html>
