@@ -52,7 +52,9 @@
     <hr>
     <h2>商品登録・編集</h2>
     <label for="category">カテゴリー</label>
-    <select id="category"></select>
+    <select id="category">
+      <option value="">カテゴリーを選択してください</option>
+    </select>
     <label for="productName">商品名</label>
     <input id="productName">
     <label for="productPrice">価格</label>
@@ -64,7 +66,8 @@
     <p id="productStatus" aria-live="polite"></p>
 
     <h3>商品をまとめて登録</h3>
-    <p>上のカテゴリーを選び、1行に1商品ずつ入力します。形式：商品名 | 価格 | 陳列コーナー</p>
+    <p>上のカテゴリーを選んでください。まとめて登録する全商品に同じカテゴリーが付きます。</p>
+    <p>1行に1商品ずつ入力します。形式：商品名 | 価格 | 陳列コーナー</p>
     <textarea id="bulkProducts" placeholder="豚こま切れ | 88円 | 精肉売場&#10;牛切り落とし | 198円 | 精肉売場"></textarea>
     <button id="bulkSaveButton" type="button" onclick="bulkSaveProducts()">まとめて登録</button>
     <p id="bulkStatus" aria-live="polite"></p>
@@ -233,6 +236,11 @@
       select.replaceChildren();
       list.replaceChildren();
 
+      const placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = "カテゴリーを選択してください";
+      select.appendChild(placeholder);
+
       for (const item of data || []) {
         const option = document.createElement("option");
         option.value = item.name;
@@ -252,8 +260,10 @@
       if (!data || !data.length) {
         select.innerHTML = '<option value="">カテゴリーがありません</option>';
         list.textContent = "カテゴリーがありません。";
-      } else if ([...select.options].some(function(option) { return option.value === oldValue; })) {
+      } else if (oldValue && [...select.options].some(function(option) { return option.value === oldValue; })) {
         select.value = oldValue;
+      } else {
+        select.value = "";
       }
     }
 
@@ -539,3 +549,4 @@
   </script>
 </body>
 </html>
+
