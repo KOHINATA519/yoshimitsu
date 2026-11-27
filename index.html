@@ -28,6 +28,7 @@
 
   <hr>
   <footer>
+    <p id="storeAddress" aria-live="polite" hidden></p>
     <p><a id="companySiteLink" href="yoshimitsu.html">スーパー吉光株式会社</a></p>
     <p>協力会社：<a id="cognitioSiteLink" href="cognitio.html">Cognitio株式会社</a></p>
   </footer>
@@ -49,7 +50,7 @@
       }
 
       const result = await client.from("stores")
-        .select("id, name, slug")
+        .select("id, name, slug, address")
         .eq("slug", storeSlug)
         .eq("is_active", true)
         .maybeSingle();
@@ -63,6 +64,9 @@
       store = result.data;
       document.title = store.name + "｜スーパー情報";
       document.getElementById("storeName").textContent = store.name;
+      const addressElement = document.getElementById("storeAddress");
+      addressElement.textContent = store.address ? "住所：" + store.address : "";
+      addressElement.hidden = !store.address;
       document.getElementById("companySiteLink").href = "yoshimitsu.html?store=" + encodeURIComponent(store.slug);
       document.getElementById("cognitioSiteLink").href = "cognitio.html?store=" + encodeURIComponent(store.slug);
 
