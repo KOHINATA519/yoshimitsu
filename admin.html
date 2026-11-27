@@ -15,6 +15,9 @@
     .actions { display: flex; gap: 8px; }
     .actions button { width: 50%; }
     .delete-button { color: #a00; background: #fff0f0; }
+    .bulk-delete-button { color: #a00; background: #fff0f0; }
+    .product-select, #selectAllProducts { width: auto; margin: 0 8px 0 0; }
+    .schedule-input { display: none; }
     .error { color: #b00020; }
     .success { color: green; }
     [hidden] { display: none !important; }
@@ -61,17 +64,39 @@
     <input id="productPrice" placeholder="例：88円">
     <label for="productCorner">陳列コーナー</label>
     <input id="productCorner" placeholder="例：精肉売場">
+    <h3>掲載時期</h3>
+    <label for="publishMode">掲載開始</label>
+    <select id="publishMode" onchange="updateScheduleControls()">
+      <option value="now">今日から掲載</option>
+      <option value="tomorrow">明日から掲載</option>
+      <option value="week">1週間後から掲載</option>
+      <option value="custom">日付を指定</option>
+    </select>
+    <input id="publishAtCustom" class="schedule-input" type="date" aria-label="掲載開始日">
+    <label for="unpublishMode">掲載終了</label>
+    <select id="unpublishMode" onchange="updateScheduleControls()">
+      <option value="none">終了日を設定しない</option>
+      <option value="1day">掲載開始から1日間</option>
+      <option value="7days">掲載開始から7日間</option>
+      <option value="30days">掲載開始から30日間</option>
+      <option value="custom">終了日を指定</option>
+    </select>
+    <input id="unpublishAtCustom" class="schedule-input" type="date" aria-label="掲載終了日">
+    <p>まとめて登録では、ここで選んだ掲載時期を全商品に適用します。</p>
     <button id="productSaveButton" type="button" onclick="saveProduct()">商品を登録</button>
     <button id="productCancelButton" type="button" onclick="cancelProductEdit()" hidden>編集をキャンセル</button>
     <p id="productStatus" aria-live="polite"></p>
 
     <h3>商品をまとめて登録</h3>
-    <p>上のカテゴリーを選んでください。まとめて登録する全商品に同じカテゴリーが付きます。</p>
-    <p>1行に1商品ずつ入力します。形式：商品名 | 価格 | 陳列コーナー</p>
-    <textarea id="bulkProducts" placeholder="豚こま切れ | 88円 | 精肉売場&#10;牛切り落とし | 198円 | 精肉売場"></textarea>
+    <p>ジャンルごとに自動で振り分ける場合：ジャンル | 商品名 | 価格 | 陳列コーナー</p>
+    <p>未登録ジャンルは「ジャンル名コーナー特売」というカテゴリーを自動作成します。従来どおり上のカテゴリーを選ぶ場合は、商品名 | 価格 | 陳列コーナー の形式も使えます。</p>
+    <textarea id="bulkProducts" placeholder="肉 | 豚こま切れ | 88円 | 精肉売場&#10;日用品 | 洗剤 | 198円 | 日用品売場"></textarea>
     <button id="bulkSaveButton" type="button" onclick="bulkSaveProducts()">まとめて登録</button>
     <p id="bulkStatus" aria-live="polite"></p>
     <h3>登録済み商品</h3>
+    <label><input id="selectAllProducts" type="checkbox" onchange="toggleAllProducts(this.checked)">表示中の商品をすべて選択</label>
+    <button id="bulkDeleteProductsButton" class="bulk-delete-button" type="button" onclick="deleteSelectedProducts()" disabled>選択した商品をまとめて削除</button>
+    <p id="bulkDeleteStatus" aria-live="polite"></p>
     <div id="productList" aria-live="polite"></div>
 
     <hr>
@@ -268,19 +293,62 @@
     }
 
     async function addCategory() {
-      const name = document.getElementById("newCategoryName").value.trim();
-      if (!name) {
+      const rawName = document.getElementById("newCategoryName").value.trim();
+      if (!rawName) {
         status("categoryStatus", "カテゴリー名を入力してください。", "error");
         return;
       }
-      const { error } = await client.from("categories").insert([{ store_id: store.id, name: name }]);
-      if (error) {
+      const name = normalizeCategoryName(rawName);
+      try {
+        const added = await ensureCategory(name, rawName);
+        if (!added) {
+          status("categoryStatus", "同じカテゴリーがすでにあります。", "error");
+          return;
+        }
+      } catch (error) {
         status("categoryStatus", error.code === "23505" ? "同じカテゴリーがすでにあります。" : "追加失敗：" + error.message, "error");
         return;
       }
       document.getElementById("newCategoryName").value = "";
       status("categoryStatus", "カテゴリーを追加しました。", "success");
       await loadCategories();
+    }
+
+    function normalizeCategoryName(name) {
+      const trimmed = String(name || "").trim();
+      return trimmed.endsWith("コーナー特売") ? trimmed : trimmed + "コーナー特売";
+    }
+
+    async function ensureCategory(name, originalName) {
+      const { data, error: findError } = await client.from("categories")
+        .select("name")
+        .eq("store_id", store.id)
+        .eq("name", name)
+        .maybeSingle();
+      if (findError) throw findError;
+      if (data) return false;
+
+      if (originalName && originalName !== name) {
+        const { data: oldCategory, error: oldFindError } = await client.from("categories")
+          .select("name")
+          .eq("store_id", store.id)
+          .eq("name", originalName)
+          .maybeSingle();
+        if (oldFindError) throw oldFindError;
+        if (oldCategory) {
+          const { error: renameError } = await client.from("categories")
+            .update({ name: name })
+            .eq("store_id", store.id)
+            .eq("name", originalName);
+          if (renameError) throw renameError;
+          return true;
+        }
+      }
+
+      const { error: insertError } = await client.from("categories")
+        .insert([{ store_id: store.id, name: name }]);
+      if (insertError && insertError.code !== "23505") throw insertError;
+      return !insertError;
     }
 
     async function deleteCategory(name) {
@@ -301,13 +369,15 @@
       const area = document.getElementById("productList");
       area.textContent = "読込中...";
       const { data, error } = await client.from("products")
-        .select("id, category, product_name, price, corner, updated_at")
+        .select("id, category, product_name, price, corner, created_at, updated_at, publish_at, unpublish_at")
         .eq("store_id", store.id).order("id", { ascending: false });
       if (error) {
         area.textContent = "商品を読み込めませんでした：" + error.message;
         return;
       }
       area.replaceChildren();
+      document.getElementById("selectAllProducts").checked = false;
+      updateBulkDeleteButton();
       if (!data || !data.length) {
         area.textContent = "商品はありません。";
         return;
@@ -315,8 +385,22 @@
       for (const item of data) {
         const card = document.createElement("section");
         card.className = "card";
+        const selectLabel = document.createElement("label");
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.className = "product-select";
+        checkbox.value = String(item.id);
+        checkbox.setAttribute("aria-label", item.product_name + "を選択");
+        checkbox.addEventListener("change", updateBulkDeleteButton);
+        selectLabel.append(checkbox, document.createTextNode("まとめて削除する商品にチェック"));
         const details = document.createElement("p");
         details.textContent = item.category + "：" + item.product_name + "／価格：" + item.price + "／陳列コーナー：" + item.corner;
+        const schedule = document.createElement("p");
+        const now = new Date();
+        const publishDate = new Date(item.publish_at);
+        const unpublishDate = item.unpublish_at ? new Date(item.unpublish_at) : null;
+        const state = publishDate > now ? "掲載予約中" : (unpublishDate && unpublishDate <= now ? "掲載終了" : "掲載中");
+        schedule.textContent = "登録日時：" + formatAdminDate(item.created_at) + "／" + state + "／掲載開始日：" + formatAdminDay(item.publish_at) + "／掲載終了日：" + (item.unpublish_at ? formatAdminDay(jstMidnightIso(shiftDateString(toJstDateInput(item.unpublish_at), -1))) : "設定なし");
         const actions = document.createElement("div");
         actions.className = "actions";
         const edit = document.createElement("button");
@@ -326,9 +410,128 @@
         del.type = "button"; del.className = "delete-button"; del.textContent = "削除";
         del.addEventListener("click", function() { deleteProduct(item.id); });
         actions.append(edit, del);
-        card.append(details, actions);
+        card.append(selectLabel, details, schedule, actions);
         area.appendChild(card);
       }
+    }
+
+    function formatAdminDate(value) {
+      if (!value) return "未設定";
+      return new Intl.DateTimeFormat("ja-JP", {
+        timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit",
+        hour: "2-digit", minute: "2-digit"
+      }).format(new Date(value));
+    }
+
+    function formatAdminDay(value) {
+      if (!value) return "未設定";
+      return new Intl.DateTimeFormat("ja-JP", {
+        timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit"
+      }).format(new Date(value));
+    }
+
+    function jstDateString(date) {
+      const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit"
+      }).formatToParts(date);
+      const values = Object.fromEntries(parts.map(function(part) { return [part.type, part.value]; }));
+      return values.year + "-" + values.month + "-" + values.day;
+    }
+
+    function shiftDateString(dateString, days) {
+      const date = new Date(dateString + "T00:00:00+09:00");
+      date.setUTCDate(date.getUTCDate() + days);
+      return date.toISOString().slice(0, 10);
+    }
+
+    function jstMidnightIso(dateString) {
+      return new Date(dateString + "T00:00:00+09:00").toISOString();
+    }
+
+    function toJstDateInput(value) {
+      return value ? jstDateString(new Date(value)) : "";
+    }
+
+    function updateScheduleControls() {
+      document.getElementById("publishAtCustom").style.display =
+        document.getElementById("publishMode").value === "custom" ? "block" : "none";
+      document.getElementById("unpublishAtCustom").style.display =
+        document.getElementById("unpublishMode").value === "custom" ? "block" : "none";
+    }
+
+    function readSchedule() {
+      const publishMode = document.getElementById("publishMode").value;
+      const unpublishMode = document.getElementById("unpublishMode").value;
+      const publishAtCustom = document.getElementById("publishAtCustom").value;
+      const unpublishAtCustom = document.getElementById("unpublishAtCustom").value;
+      let startDate = jstDateString(new Date());
+      if (publishMode === "tomorrow") startDate = shiftDateString(startDate, 1);
+      if (publishMode === "week") startDate = shiftDateString(startDate, 7);
+      if (publishMode === "custom") {
+        if (!publishAtCustom) return { error: "掲載開始日を指定してください。" };
+        startDate = publishAtCustom;
+      }
+      const start = new Date(jstMidnightIso(startDate));
+      if (Number.isNaN(start.getTime())) return { error: "掲載開始日を確認してください。" };
+
+      let end = null;
+      if (["1day", "7days", "30days"].includes(unpublishMode)) {
+        const days = unpublishMode === "1day" ? 1 : Number(unpublishMode.replace("days", ""));
+        end = new Date(jstMidnightIso(shiftDateString(startDate, days)));
+      } else if (unpublishMode === "custom") {
+        if (!unpublishAtCustom) return { error: "掲載終了日を指定してください。" };
+        end = new Date(jstMidnightIso(shiftDateString(unpublishAtCustom, 1)));
+      }
+      if (end && (Number.isNaN(end.getTime()) || end <= start)) {
+        return { error: "掲載終了日は掲載開始日以降にしてください。" };
+      }
+      return { publish_at: start.toISOString(), unpublish_at: end ? end.toISOString() : null };
+    }
+
+    function toggleAllProducts(checked) {
+      document.querySelectorAll("#productList .product-select").forEach(function(checkbox) {
+        checkbox.checked = checked;
+      });
+      updateBulkDeleteButton();
+    }
+
+    function updateBulkDeleteButton() {
+      const selectedCount = document.querySelectorAll("#productList .product-select:checked").length;
+      const button = document.getElementById("bulkDeleteProductsButton");
+      button.disabled = selectedCount === 0;
+      button.textContent = selectedCount
+        ? "選択した商品をまとめて削除（" + selectedCount + "件）"
+        : "選択した商品をまとめて削除";
+      const checkboxes = document.querySelectorAll("#productList .product-select");
+      const selectAll = document.getElementById("selectAllProducts");
+      selectAll.checked = checkboxes.length > 0 && selectedCount === checkboxes.length;
+      selectAll.indeterminate = selectedCount > 0 && selectedCount < checkboxes.length;
+    }
+
+    async function deleteSelectedProducts() {
+      const ids = Array.from(document.querySelectorAll("#productList .product-select:checked"))
+        .map(function(checkbox) { return Number(checkbox.value); })
+        .filter(Number.isFinite);
+      if (!ids.length) {
+        status("bulkDeleteStatus", "削除する商品を選んでください。", "error");
+        return;
+      }
+      if (!confirm(ids.length + "件の商品を削除します。よろしいですか？")) return;
+
+      const button = document.getElementById("bulkDeleteProductsButton");
+      button.disabled = true;
+      status("bulkDeleteStatus", "削除中...");
+      const { error } = await client.from("products")
+        .delete()
+        .eq("store_id", store.id)
+        .in("id", ids);
+      if (error) {
+        status("bulkDeleteStatus", "一括削除に失敗しました：" + error.message, "error");
+        updateBulkDeleteButton();
+        return;
+      }
+      status("bulkDeleteStatus", ids.length + "件の商品を削除しました。", "success");
+      await loadProducts();
     }
 
     function editProduct(item) {
@@ -337,6 +540,13 @@
       document.getElementById("productName").value = item.product_name || "";
       document.getElementById("productPrice").value = item.price || "";
       document.getElementById("productCorner").value = item.corner || "";
+      document.getElementById("publishMode").value = "custom";
+      document.getElementById("publishAtCustom").value = toJstDateInput(item.publish_at);
+      document.getElementById("unpublishMode").value = item.unpublish_at ? "custom" : "none";
+      document.getElementById("unpublishAtCustom").value = item.unpublish_at
+        ? shiftDateString(toJstDateInput(item.unpublish_at), -1)
+        : "";
+      updateScheduleControls();
       document.getElementById("productSaveButton").textContent = "変更を保存";
       document.getElementById("productCancelButton").hidden = false;
       status("productStatus", "商品を編集中です。");
@@ -344,12 +554,19 @@
     }
 
     async function saveProduct() {
+      const schedule = readSchedule();
+      if (schedule.error) {
+        status("productStatus", schedule.error, "error");
+        return;
+      }
       const product = {
         store_id: store.id,
         category: document.getElementById("category").value,
         product_name: document.getElementById("productName").value.trim(),
         price: document.getElementById("productPrice").value.trim(),
-        corner: document.getElementById("productCorner").value.trim()
+        corner: document.getElementById("productCorner").value.trim(),
+        publish_at: schedule.publish_at,
+        unpublish_at: schedule.unpublish_at
       };
       if (!product.category || !product.product_name) {
         status("productStatus", "カテゴリーと商品名を入力してください。", "error");
@@ -376,41 +593,68 @@
     }
 
     async function bulkSaveProducts() {
-      const category = document.getElementById("category").value;
-      const input = document.getElementById("bulkProducts").value.trim();
-      const button = document.getElementById("bulkSaveButton");
-      if (!category || !input) {
-        status("bulkStatus", "カテゴリーを選び、商品を入力してください。", "error");
+      const schedule = readSchedule();
+      if (schedule.error) {
+        status("bulkStatus", schedule.error, "error");
         return;
       }
-      const rows = [];
+      const selectedCategory = document.getElementById("category").value;
+      const input = document.getElementById("bulkProducts").value.trim();
+      const button = document.getElementById("bulkSaveButton");
+      if (!input) {
+        status("bulkStatus", "商品を入力してください。", "error");
+        return;
+      }
+      const parsedRows = [];
       const errors = [];
       input.split(/\r?\n/).forEach(function(line, index) {
         if (!line.trim()) return;
         const parts = line.split("|").map(function(part) { return part.trim(); });
-        if (parts.length !== 3 || !parts[0]) {
-          errors.push((index + 1) + "行目");
-        } else {
-          rows.push({
-            store_id: store.id, category: category, product_name: parts[0],
-            price: parts[1], corner: parts[2]
+        if (parts.length === 4 && parts[0] && parts[1]) {
+          parsedRows.push({
+            category: normalizeCategoryName(parts[0]),
+            originalGenre: parts[0],
+            product_name: parts[1], price: parts[2], corner: parts[3]
           });
+        } else if (parts.length === 3 && parts[0]) {
+          parsedRows.push({
+            category: selectedCategory,
+            product_name: parts[0], price: parts[1], corner: parts[2]
+          });
+        } else {
+          errors.push((index + 1) + "行目");
         }
       });
       if (errors.length) {
-        status("bulkStatus", errors.join("、") + "を確認してください。形式：商品名 | 価格 | 陳列コーナー", "error");
+        status("bulkStatus", errors.join("、") + "を確認してください。ジャンル付き：ジャンル | 商品名 | 価格 | 陳列コーナー", "error");
+        return;
+      }
+      const usesSelectedCategory = parsedRows.some(function(row) { return !row.category; });
+      if (usesSelectedCategory) {
+        status("bulkStatus", "3項目形式を使う場合は、上のカテゴリーを選んでください。", "error");
         return;
       }
       button.disabled = true;
       status("bulkStatus", "登録中...");
-      const { error } = await client.from("products").insert(rows);
-      button.disabled = false;
-      if (error) {
+      try {
+        for (const row of parsedRows) {
+          if (row.originalGenre) await ensureCategory(row.category, row.originalGenre);
+        }
+        const rows = parsedRows.map(function(row) {
+          delete row.originalGenre;
+          return { store_id: store.id, ...row, ...schedule };
+        });
+        const { error } = await client.from("products").insert(rows);
+        if (error) throw error;
+      } catch (error) {
         status("bulkStatus", "一括登録失敗：" + error.message, "error");
+        button.disabled = false;
         return;
       }
+      button.disabled = false;
       document.getElementById("bulkProducts").value = "";
-      status("bulkStatus", rows.length + "件を登録しました。", "success");
+      status("bulkStatus", parsedRows.length + "件を登録しました。必要なジャンルカテゴリーも追加しました。", "success");
+      await loadCategories();
       await loadProducts();
     }
 
@@ -431,6 +675,11 @@
       document.getElementById("productName").value = "";
       document.getElementById("productPrice").value = "";
       document.getElementById("productCorner").value = "";
+      document.getElementById("publishMode").value = "now";
+      document.getElementById("publishAtCustom").value = "";
+      document.getElementById("unpublishMode").value = "none";
+      document.getElementById("unpublishAtCustom").value = "";
+      updateScheduleControls();
       document.getElementById("productSaveButton").textContent = "商品を登録";
       document.getElementById("productCancelButton").hidden = true;
     }
@@ -549,4 +798,3 @@
   </script>
 </body>
 </html>
-
