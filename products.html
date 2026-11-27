@@ -77,10 +77,13 @@
         return;
       }
 
+      const nowIso = new Date().toISOString();
       const result = await client.from("products")
-        .select("product_name, price, corner, created_at, updated_at")
+        .select("product_name, price, corner, created_at, updated_at, publish_at, unpublish_at")
         .eq("store_id", store.id)
         .eq("category", category)
+        .lte("publish_at", nowIso)
+        .or("unpublish_at.is.null,unpublish_at.gt." + nowIso)
         .order("updated_at", { ascending: false });
 
       if (result.error) {
