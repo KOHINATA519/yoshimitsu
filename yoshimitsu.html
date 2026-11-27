@@ -1,103 +1,101 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>スーパー吉光 会社概要</title>
-
-<style>
-body{
-    max-width:900px;
-    margin:auto;
-    padding:20px;
-    font-size:22px;
-    line-height:1.8;
-    font-family:sans-serif;
-}
-</style>
-
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>スーパー吉光 会社概要</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { max-width: 900px; margin: auto; padding: 20px; font-size: 22px; line-height: 1.8; font-family: sans-serif; }
+    a { font-size: 1.05em; }
+    .store { border: 1px solid #ccc; padding: 12px; margin: 12px 0; overflow-wrap: anywhere; }
+    .error { color: #b00020; }
+  </style>
 </head>
-
 <body>
+  <h1>スーパー吉光</h1>
 
-<h1>スーパー吉光</h1>
+  <p>世界の皆様の豊かな暮らしを支えるスーパーマーケットです。</p>
 
-<p>
-世界の皆様の豊かな暮らしを支えるスーパーマーケットです。
-</p>
+  <hr>
+  <h2>会社概要</h2>
+  <p>会社名：スーパー吉光株式会社</p>
+  <p>設立：2026年</p>
+  <p>所在地：埼玉県入間市野田</p>
+  <p>事業内容：食品・日用品の販売</p>
+  <p>社長：吉田 光秀</p>
+  <p>資本金：10,000円</p>
 
-<hr>
+  <hr>
+  <h2>経営理念</h2>
+  <p>誰もが安心して利用できる店舗づくりを目指します。</p>
+  <p>高齢者や視覚障害者を含むすべてのお客様に、わかりやすく利用しやすいサービスを提供します。骨が折れそうな企業努力をして低価格・高品質の商品を皆様に提供します。</p>
 
-<h2>会社概要</h2>
+  <hr>
+  <h2>当店の特徴</h2>
+  <ul>
+    <li>毎日の特売情報を掲載</li>
+    <li>新商品情報を提供</li>
+    <li>アクセシビリティを重視した情報発信</li>
+    <li>地域密着型サービス</li>
+    <li>とことん省人化してコストを抑える取り組み</li>
+  </ul>
 
-<p>
-会社名：スーパー吉光株式会社
-</p>
+  <hr>
+  <h2>店舗一覧</h2>
+  <p>本部管理画面に登録した公開中の店舗が表示されます。</p>
+  <div id="storeList" aria-live="polite">店舗一覧を読み込んでいます...</div>
 
-<p>
-設立：2026年
-</p>
+  <hr>
+  <p><a id="backLink" href="index.html">店舗サイトへ戻る</a></p>
 
-<p>
-所在地：埼玉県入間市野田
-</p>
+  <script>
+    const SUPABASE_URL = "https://llxysqzozhnikuznsuwy.supabase.co";
+    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_uv_8zUNxYc1tebjvnukzdg_nNF6kAip";
+    const client = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+    const currentStore = new URLSearchParams(location.search).get("store");
+    if (currentStore) {
+      document.getElementById("backLink").href = "index.html?store=" + encodeURIComponent(currentStore);
+    } else {
+      document.getElementById("backLink").href = "yoshimitsu.html";
+      document.getElementById("backLink").textContent = "店舗一覧の先頭へ戻る";
+    }
 
-<p>
-事業内容：食品・日用品の販売
-</p>
+    async function loadStores() {
+      const area = document.getElementById("storeList");
+      const { data, error } = await client.from("stores")
+        .select("name, address, slug")
+        .eq("is_active", true)
+        .order("created_at", { ascending: true });
 
-<p>
-社長：吉田 光秀
-</p>
-    
-<p>
-資本金:10,000円
-</p>
-<hr>
+      if (error) {
+        area.textContent = "店舗一覧を読み込めませんでした。";
+        area.className = "error";
+        console.error("店舗一覧読込エラー:", error.message);
+        return;
+      }
+      area.replaceChildren();
+      if (!data || data.length === 0) {
+        area.textContent = "公開中の店舗はありません。";
+        return;
+      }
 
-<h2>経営理念</h2>
+      for (const store of data) {
+        const card = document.createElement("section");
+        card.className = "store";
+        const heading = document.createElement("h3");
+        heading.textContent = store.name;
+        const address = document.createElement("p");
+        address.textContent = "住所：" + (store.address || "未登録");
+        const link = document.createElement("a");
+        link.href = "index.html?store=" + encodeURIComponent(store.slug);
+        link.textContent = store.name + "の店舗サイトを開く";
+        card.append(heading, address, link);
+        area.appendChild(card);
+      }
+    }
 
-<p>
-誰もが安心して利用できる店舗づくりを目指します。
-</p>
-
-<p>
-高齢者や視覚障害者を含むすべてのお客様に、
-わかりやすく利用しやすいサービスを提供します。
-骨が折れそうな企業努力をして低価格・高品質の商品を皆様に提供します。
-</p>
-
-<hr>
-
-<h2>当店の特徴</h2>
-
-<ul>
-<li>毎日の特売情報を掲載</li>
-<li>新商品情報を提供</li>
-<li>アクセシビリティを重視した情報発信</li>
-<li>地域密着型サービス</li>
-<li>とことん省人化してコスト</li>
-</ul>
-
-<hr>
-
-<h2>店舗一覧</h2>
-<ul>
-<li>総本店(埼玉県入間市野田)</li>
-<li>Cognitio店(埼玉県坂戸市)</li>
-<li>浦和店(埼玉県さいたま市)</li>
-<li>岐阜店(岐阜県岐阜市)</li>
-<li>群馬店(群馬県前橋市)</li>
-<li>福島店(福島県福島市)</li>
-<li>ヘルシンキ店(Finrand,Helsinki)</li>
-<li>ニューデリー店(Newdery,India)</li>
-<li>ソウル江南店(Seoul,The Republic of Korea)</li>
-</ul>
-<hr>
-
-<p>
-<a href="index.html">トップページへ戻る</a>
-</p>
-
+    loadStores();
+  </script>
 </body>
 </html>
