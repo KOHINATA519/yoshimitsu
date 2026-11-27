@@ -333,6 +333,7 @@
 
     function normalizeCategoryName(name) {
       const trimmed = String(name || "").trim();
+      if (["新商品", "新商品情報", "その他", "その他特売"].includes(trimmed)) return trimmed;
       return trimmed.endsWith("コーナー特売") ? trimmed : trimmed + "コーナー特売";
     }
 
