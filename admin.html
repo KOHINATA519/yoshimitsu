@@ -65,29 +65,46 @@
     <label for="productCorner">陳列コーナー</label>
     <input id="productCorner" placeholder="例：精肉売場">
     <h3>掲載時期</h3>
-    <label for="publishMode">掲載開始</label>
-    <select id="publishMode" onchange="updateScheduleControls()">
+    <label for="productPublishMode">掲載開始</label>
+    <select id="productPublishMode" onchange="updateScheduleControls('product')">
       <option value="now">今日から掲載</option>
       <option value="tomorrow">明日から掲載</option>
       <option value="week">1週間後から掲載</option>
       <option value="custom">日付を指定</option>
     </select>
-    <input id="publishAtCustom" class="schedule-input" type="date" aria-label="掲載開始日">
-    <label for="unpublishMode">掲載終了</label>
-    <select id="unpublishMode" onchange="updateScheduleControls()">
+    <input id="productPublishAtCustom" class="schedule-input" type="date" aria-label="掲載開始日">
+    <label for="productUnpublishMode">掲載終了</label>
+    <select id="productUnpublishMode" onchange="updateScheduleControls('product')">
       <option value="none">終了日を設定しない</option>
       <option value="1day">掲載開始から1日間</option>
       <option value="7days">掲載開始から7日間</option>
       <option value="30days">掲載開始から30日間</option>
       <option value="custom">終了日を指定</option>
     </select>
-    <input id="unpublishAtCustom" class="schedule-input" type="date" aria-label="掲載終了日">
-    <p>まとめて登録では、ここで選んだ掲載時期を全商品に適用します。</p>
+    <input id="productUnpublishAtCustom" class="schedule-input" type="date" aria-label="掲載終了日">
     <button id="productSaveButton" type="button" onclick="saveProduct()">商品を登録</button>
     <button id="productCancelButton" type="button" onclick="cancelProductEdit()" hidden>編集をキャンセル</button>
     <p id="productStatus" aria-live="polite"></p>
 
     <h3>商品をまとめて登録</h3>
+    <p>ここで掲載時期を一度選ぶと、下に入力した商品すべてに同じ設定が適用されます。</p>
+    <label for="bulkPublishMode">掲載開始</label>
+    <select id="bulkPublishMode" onchange="updateScheduleControls('bulk')">
+      <option value="now">今日から掲載</option>
+      <option value="tomorrow">明日から掲載</option>
+      <option value="week">1週間後から掲載</option>
+      <option value="custom">日付を指定</option>
+    </select>
+    <input id="bulkPublishAtCustom" class="schedule-input" type="date" aria-label="一括掲載開始日">
+    <label for="bulkUnpublishMode">掲載終了</label>
+    <select id="bulkUnpublishMode" onchange="updateScheduleControls('bulk')">
+      <option value="none">終了日を設定しない</option>
+      <option value="1day">掲載開始から1日間</option>
+      <option value="7days">掲載開始から7日間</option>
+      <option value="30days">掲載開始から30日間</option>
+      <option value="custom">終了日を指定</option>
+    </select>
+    <input id="bulkUnpublishAtCustom" class="schedule-input" type="date" aria-label="一括掲載終了日">
     <p>ジャンルごとに自動で振り分ける場合：ジャンル | 商品名 | 価格 | 陳列コーナー</p>
     <p>未登録ジャンルは「ジャンル名コーナー特売」というカテゴリーを自動作成します。従来どおり上のカテゴリーを選ぶ場合は、商品名 | 価格 | 陳列コーナー の形式も使えます。</p>
     <textarea id="bulkProducts" placeholder="肉 | 豚こま切れ | 88円 | 精肉売場&#10;日用品 | 洗剤 | 198円 | 日用品売場"></textarea>
@@ -452,18 +469,18 @@
       return value ? jstDateString(new Date(value)) : "";
     }
 
-    function updateScheduleControls() {
-      document.getElementById("publishAtCustom").style.display =
-        document.getElementById("publishMode").value === "custom" ? "block" : "none";
-      document.getElementById("unpublishAtCustom").style.display =
-        document.getElementById("unpublishMode").value === "custom" ? "block" : "none";
+    function updateScheduleControls(prefix) {
+      document.getElementById(prefix + "PublishAtCustom").style.display =
+        document.getElementById(prefix + "PublishMode").value === "custom" ? "block" : "none";
+      document.getElementById(prefix + "UnpublishAtCustom").style.display =
+        document.getElementById(prefix + "UnpublishMode").value === "custom" ? "block" : "none";
     }
 
-    function readSchedule() {
-      const publishMode = document.getElementById("publishMode").value;
-      const unpublishMode = document.getElementById("unpublishMode").value;
-      const publishAtCustom = document.getElementById("publishAtCustom").value;
-      const unpublishAtCustom = document.getElementById("unpublishAtCustom").value;
+    function readSchedule(prefix) {
+      const publishMode = document.getElementById(prefix + "PublishMode").value;
+      const unpublishMode = document.getElementById(prefix + "UnpublishMode").value;
+      const publishAtCustom = document.getElementById(prefix + "PublishAtCustom").value;
+      const unpublishAtCustom = document.getElementById(prefix + "UnpublishAtCustom").value;
       let startDate = jstDateString(new Date());
       if (publishMode === "tomorrow") startDate = shiftDateString(startDate, 1);
       if (publishMode === "week") startDate = shiftDateString(startDate, 7);
@@ -540,13 +557,13 @@
       document.getElementById("productName").value = item.product_name || "";
       document.getElementById("productPrice").value = item.price || "";
       document.getElementById("productCorner").value = item.corner || "";
-      document.getElementById("publishMode").value = "custom";
-      document.getElementById("publishAtCustom").value = toJstDateInput(item.publish_at);
-      document.getElementById("unpublishMode").value = item.unpublish_at ? "custom" : "none";
-      document.getElementById("unpublishAtCustom").value = item.unpublish_at
+      document.getElementById("productPublishMode").value = "custom";
+      document.getElementById("productPublishAtCustom").value = toJstDateInput(item.publish_at);
+      document.getElementById("productUnpublishMode").value = item.unpublish_at ? "custom" : "none";
+      document.getElementById("productUnpublishAtCustom").value = item.unpublish_at
         ? shiftDateString(toJstDateInput(item.unpublish_at), -1)
         : "";
-      updateScheduleControls();
+      updateScheduleControls("product");
       document.getElementById("productSaveButton").textContent = "変更を保存";
       document.getElementById("productCancelButton").hidden = false;
       status("productStatus", "商品を編集中です。");
@@ -554,7 +571,7 @@
     }
 
     async function saveProduct() {
-      const schedule = readSchedule();
+      const schedule = readSchedule("product");
       if (schedule.error) {
         status("productStatus", schedule.error, "error");
         return;
@@ -593,7 +610,7 @@
     }
 
     async function bulkSaveProducts() {
-      const schedule = readSchedule();
+      const schedule = readSchedule("bulk");
       if (schedule.error) {
         status("bulkStatus", schedule.error, "error");
         return;
@@ -675,11 +692,11 @@
       document.getElementById("productName").value = "";
       document.getElementById("productPrice").value = "";
       document.getElementById("productCorner").value = "";
-      document.getElementById("publishMode").value = "now";
-      document.getElementById("publishAtCustom").value = "";
-      document.getElementById("unpublishMode").value = "none";
-      document.getElementById("unpublishAtCustom").value = "";
-      updateScheduleControls();
+      document.getElementById("productPublishMode").value = "now";
+      document.getElementById("productPublishAtCustom").value = "";
+      document.getElementById("productUnpublishMode").value = "none";
+      document.getElementById("productUnpublishAtCustom").value = "";
+      updateScheduleControls("product");
       document.getElementById("productSaveButton").textContent = "商品を登録";
       document.getElementById("productCancelButton").hidden = true;
     }
