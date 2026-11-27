@@ -26,6 +26,49 @@
   <h2>お知らせ</h2>
   <div id="announcements" aria-live="polite">読み込み中...</div>
 
+  <hr>
+  <footer>
+    <h2>スーパー吉光株式会社</h2>
+    <p>世界の皆様の豊かな暮らしを支えるスーパーマーケットです。</p>
+    <h3>会社概要</h3>
+    <p>設立：2026年</p>
+    <p>所在地：埼玉県入間市野田</p>
+    <p>事業内容：食品・日用品の販売</p>
+    <p>社長：吉田 光秀</p>
+    <p>資本金：10,000円</p>
+
+    <h3>経営理念</h3>
+    <p>誰もが安心して利用できる店舗づくりを目指します。</p>
+    <p>高齢者や視覚障害者を含むすべてのお客様に、わかりやすく利用しやすいサービスを提供します。骨が折れそうな企業努力をして低価格・高品質の商品を皆様に提供します。</p>
+
+    <h3>当店の特徴</h3>
+    <ul>
+      <li>毎日の特売情報を掲載</li>
+      <li>新商品情報を提供</li>
+      <li>アクセシビリティを重視した情報発信</li>
+      <li>地域密着型サービス</li>
+      <li>とことん省人化してコストを抑える取り組み</li>
+    </ul>
+    <p><a id="companySiteLink" href="yoshimitsu.html">スーパー吉光の会社サイト・店舗一覧</a></p>
+
+    <hr>
+    <h2>協力会社：Cognitio株式会社</h2>
+    <p>私たちは、みんなで卒業を目指しています。</p>
+    <h3>取り組み</h3>
+    <ul>
+      <li>視覚にハンディキャップのある方向け支援システムの研究開発</li>
+      <li>買い物支援技術の研究</li>
+      <li>アクセシビリティを重視したWeb制作</li>
+      <li>AIを活用した情報提供サービス</li>
+      <li>ドスカニ・傘の研究開発</li>
+    </ul>
+    <h3>Duxプロジェクト</h3>
+    <p>Duxは、視覚障害者がスーパーで自立した買い物を行うための支援システムです。売り場への案内、商品探索、障害物検知などの機能により、実店舗での買い物を支援します。</p>
+    <h3>私たちの目標</h3>
+    <p>省人化が進む未来においても、視覚障害のある方が安心して買い物できる環境づくりを目指しています。</p>
+    <p><a id="cognitioSiteLink" href="cognitio.html">Cognitio株式会社の紹介ページ</a></p>
+  </footer>
+
   <script>
     const SUPABASE_URL = "https://llxysqzozhnikuznsuwy.supabase.co";
     const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_uv_8zUNxYc1tebjvnukzdg_nNF6kAip";
@@ -57,6 +100,8 @@
       store = result.data;
       document.title = store.name + "｜スーパー情報";
       document.getElementById("storeName").textContent = store.name;
+      document.getElementById("companySiteLink").href = "yoshimitsu.html?store=" + encodeURIComponent(store.slug);
+      document.getElementById("cognitioSiteLink").href = "cognitio.html?store=" + encodeURIComponent(store.slug);
 
       const categoryResult = await client.from("categories")
         .select("name")
